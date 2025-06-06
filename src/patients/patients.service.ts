@@ -3,23 +3,27 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
 import { Patient } from './entities/patient.entity';
+import { lastValueFrom } from 'rxjs';
+import { HttpService } from '@nestjs/axios';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class PatientsService {
     constructor(
         @InjectRepository(Patient)
         private patientRepository: Repository<Patient>,
+        private httpService:HttpService
     ) { }
 
-    async fetchAndStorePatient(patientId: string): Promise<Patient> {
+    async fetchAndStorePatient() {
         try {
-            const url = `https://r4.smarthealthit.org/Patient/${patientId}`;
+            const url = `https://r4.smarthealthit.org/Patient/?_count=1`;
 
-            const response = await axios.get(url);
-            const data = response.data;
-            console.log(data)
+            const response = await lastValueFrom(this.httpService.get(url))
+            const data = response.data.entry[0].resource;
+            console.log('Patient Data retrieved')
 
-            const identifier = data.identifier?.[0]?.value || patientId;
+            const identifier = data.identifier?.[0]?.value || randomUUID();
             const nameObj = data.name?.[0] || {};
             const telecom = data.telecom || [];
             const address = data.address?.[0] || {};
@@ -42,10 +46,11 @@ export class PatientsService {
                 managingOrganizationId: data.managingOrganization?.reference?.split('/')?.[1],
             });
 
-            return await this.patientRepository.save(patient);
+            await this.patientRepository.save(patient);
+            return patient;
         }
         catch (err) {
-            throw new InternalServerErrorException(`Error creating patient ${patientId}`);
+            throw new InternalServerErrorException(`Error creating patient`);
         }
 
     }

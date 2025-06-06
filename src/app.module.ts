@@ -6,6 +6,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { Patient } from './patients/entities/patient.entity';
+import { LoadEhrDataService } from './load_ehr_data/load_ehr_data.service';
+import { LoadEhrDataController } from './load_ehr_data/load_ehr_data.controller';
+import { LoadEhrDataModule } from './load_ehr_data/load_ehr_data.module';
 
 @Module({
   imports: [
@@ -31,9 +34,10 @@ import { Patient } from './patients/entities/patient.entity';
       global: true, // Makes the JWT module available globally
       verifyOptions: { algorithms: ['HS256'] }, // Specify the algorithm used for signing
     }),
-    PatientsModule
+    PatientsModule,
+    LoadEhrDataModule
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, LoadEhrDataController],
+  providers: [AppService, LoadEhrDataService],
 })
 export class AppModule { }
