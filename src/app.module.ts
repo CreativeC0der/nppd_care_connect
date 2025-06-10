@@ -5,10 +5,14 @@ import { PatientsModule } from './patients/patients.module';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { Patient } from './patients/entities/patient.entity';
 import { LoadEhrDataService } from './load_ehr_data/load_ehr_data.service';
 import { LoadEhrDataController } from './load_ehr_data/load_ehr_data.controller';
 import { LoadEhrDataModule } from './load_ehr_data/load_ehr_data.module';
+import { PractitionersModule } from './practitioners/practitioners.module';
+import { CareplansModule } from './careplans/careplans.module';
+import { EncountersModule } from './encounters/encounters.module';
+import { ConditionsModule } from './conditions/conditions.module';
+import { MedicationsModule } from './medications/medications.module';
 
 @Module({
   imports: [
@@ -26,7 +30,6 @@ import { LoadEhrDataModule } from './load_ehr_data/load_ehr_data.module';
       database: process.env.DB_NAME || 'healthcare_db',
       autoLoadEntities: true,
       synchronize: true, // Set to false in production
-      entities: [Patient]
     }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'defaultSecretKey',
@@ -35,7 +38,12 @@ import { LoadEhrDataModule } from './load_ehr_data/load_ehr_data.module';
       verifyOptions: { algorithms: ['HS256'] }, // Specify the algorithm used for signing
     }),
     PatientsModule,
-    LoadEhrDataModule
+    LoadEhrDataModule,
+    PractitionersModule,
+    CareplansModule,
+    EncountersModule,
+    ConditionsModule,
+    MedicationsModule
   ],
   controllers: [AppController, LoadEhrDataController],
   providers: [AppService, LoadEhrDataService],

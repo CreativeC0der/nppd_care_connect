@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Daily Care Plan Reminder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            background-color: #ffffff;
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 24px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        h2 {
+            color: #1e40af;
+        }
+
+        p {
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #1e40af;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+
+        .footer {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Hello {{params.name}},</h2>
+
+        <p>This is a gentle reminder to follow your care plan today and log your daily feedback in the app.</p>
+
+        <p>Your consistency is important for your health and helps your doctor provide the best care possible.</p>
+
+        <p>If you notice anything unusual or have any questions, please don't hesitate to reach out to your doctor.</p>
+
+        <a href="https://yourapp.com/patient/dashboard" class="button">Log Today's Feedback</a>
+
+        <div class="footer">
+            <p>Wishing you good health,<br>The Care Team</p>
+        </div>
+    </div>
+</body>
+
+</html>

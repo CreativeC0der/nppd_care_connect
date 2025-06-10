@@ -1,4 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { CarePlan } from 'src/careplans/entities/careplan.entity';
+import { Condition } from 'src/conditions/entities/condition.entity';
+import { Encounter } from 'src/encounters/entities/encounter.entity';
+import { Medication } from 'src/medications/entities/medication.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 
 @Entity()
 export class Patient {
@@ -6,7 +10,7 @@ export class Patient {
     id: string;
 
     @Column({ unique: true })
-    identifier: string;
+    fhirId: string;
 
     @Column()
     firstName: string;
@@ -44,12 +48,21 @@ export class Patient {
     @Column({ type: 'date', nullable: true })
     dateOfDeath: string;
 
-    @Column({ nullable: true })
-    managingOrganizationId: string;
-
     @CreateDateColumn()
     createdAt: Date;
 
     @UpdateDateColumn()
     updatedAt: Date;
+
+    @OneToMany(() => Encounter, encounter => encounter.patient)
+    encounters: Encounter[];
+
+    @OneToMany(() => CarePlan, carePlan => carePlan.patient)
+    carePlans: CarePlan[];
+
+    @OneToMany(() => Condition, condition => condition.patient)
+    conditions: Condition[];
+
+    @OneToMany(() => Medication, medication => medication.patient)
+    medications: Medication[];
 }

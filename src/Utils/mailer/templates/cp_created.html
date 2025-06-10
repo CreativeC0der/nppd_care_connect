@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Your Care Plan Has Been Updated</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9fafb;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            max-width: 600px;
+            margin: auto;
+        }
+
+        h2 {
+            color: #1e40af;
+        }
+
+        .section {
+            margin-top: 20px;
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #1e40af;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Hello {{params.patientName}},</h2>
+
+        <p>Your doctor has created a personalized care plan for you on <strong>{{params.planDate}}</strong>.</p>
+
+        <div class="section">
+            <p><span class="label">🛌 Sleep:</span> {{params.sleepHours}} hours/day</p>
+            <p><span class="label">🚶 Mobility:</span> {{params.mobilityHours}} hours/day</p>
+            <p><span class="label">🍽️ Diet Plan:</span> {{params.dietPlan}}</p>
+            <p><span class="label">💊 Medication:</span> {{params.medicationPlan}}</p>
+
+            <!-- Optional fields -->
+            <p><span class="label">🩹 Wound Care:</span> {{params.woundCarePlan}}</p>
+            <p><span class="label">⚠️ Warning Signs:</span> {{params.warningSigns}}</p>
+
+            <p><span class="label">📅 Follow-Up In:</span> {{params.followUpDays}} days</p>
+        </div>
+
+        <div class="section">
+            <p>Please follow this plan closely to support your recovery. If you have any questions or concerns, don't
+                hesitate to reach out to <strong>Dr. {{params.doctorName}}</strong>.</p>
+
+            <p>Also, don't forget to <strong>log your feedback</strong> and daily progress in the app. Your
+                participation is vital for your care journey.</p>
+
+            <a href="{{params.appLink}}" class="button">Open Care App</a>
+        </div>
+
+        <div class="footer">
+            <p>Take care,<br>Your Healthcare Team</p>
+        </div>
+    </div>
+</body>
+
+</html>
