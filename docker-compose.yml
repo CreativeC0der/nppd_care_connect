@@ -1,0 +1,36 @@
+services:
+  nppd_care_app:
+    build: .
+    container_name: nppd_care_app
+    env_file:
+      - .env
+    ports:
+      - "${LOCAL_PORT}:${PORT}"
+    environment:
+      - ENVIRONMENT=production
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:17
+    ports:
+      - ${LOCAL_DB_PORT}:${DB_PORT}
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    ports:
+      - "${LOCAL_REDIS_PORT}:${REDIS_PORT}"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  pgdata:
