@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, InternalServerErrorException, Param, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpCode, HttpStatus, InternalServerErrorException, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { LoginPatientDto } from './dto/login_patient.dto';
 import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
@@ -7,9 +7,6 @@ import { Public } from 'src/Utils/decorators/public.decorator';
 import { Roles } from 'src/Utils/decorators/roles.decorator';
 import { Role } from 'src/Utils/enums/role.enum';
 import { CreatePatientDto } from './dto/create_patient.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Patient } from './entities/patient.entity';
-import { Repository } from 'typeorm';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
 
@@ -17,6 +14,7 @@ import { RolesGuard } from 'src/Utils/guards/role.guard';
 @UseGuards(AuthGuard, RolesGuard)
 @ApiBearerAuth('access-token')
 export class PatientsController {
+
   constructor(private readonly patientService: PatientsService) { }
 
   @Post('/login')

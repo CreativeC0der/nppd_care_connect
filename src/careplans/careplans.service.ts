@@ -9,6 +9,7 @@ import { CarePlan } from './entities/careplan.entity';
 import { log } from 'console';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
+import { CreateCareplanDto } from './dto/create_cp.dto';
 
 @Injectable()
 export class CareplanService {
@@ -86,5 +87,32 @@ export class CareplanService {
         }
 
         console.log('Care plans and activities saved.')
+    }
+
+    async createCarePlan(createCareplanDto: CreateCareplanDto): Promise<CarePlan> {
+        const { patientId, encounterId, conditionIds, activities, ...carePlanData } = createCareplanDto;
+
+        const patient = await this.patientRepo.findOne({ where: { id: patientId } });
+        if (!patient) {
+            throw new NotFoundException(`Patient with ID ${patientId} not found`);
+        }
+
+        const encounter = encounterId ? await this.encounterRepo.findOne({ where: { id: encounterId } }) : null;
+        const conditions = conditionIds ? await this.conditionRepo.findByIds(conditionIds) : [];
+
+        const carePlan = this.carePlanRepo.create({
+            ...carePlanData,
+            patient,
+            encounter,
+            conditions,
+        });
+
+        const savedCarePlan = await this.carePlanRepo.save(carePlan);
+
+        const carePlanActivities = activities.map(activityDto =>
+            this.activityRepo.create({ ...activityDto, carePlan: savedCarePlan }),
+        );
+        await this.activityRepo.save(carePlanActivities);
+        return savedCarePlan;
     }
 }
