@@ -12,7 +12,8 @@ export class ApiResponseDTO {
     data?: any
 
     constructor(response: ApiResponseDTO) {
-        this.message = response.message ?? 'Success';
+        this.message = response.message ?? 'Operation successfull';
+        this.status = response.status ?? 'success';
         this.data = response.data;
     }
 }

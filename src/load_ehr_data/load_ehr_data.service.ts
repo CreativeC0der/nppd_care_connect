@@ -4,6 +4,7 @@ import { CareplanService } from 'src/careplans/careplans.service';
 import { EncountersService } from 'src/encounters/encounters.service';
 import { ConditionsService } from 'src/conditions/conditions.service';
 import { MedicationsService } from 'src/medications/medications.service';
+import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 
 @Injectable()
 export class LoadEhrDataService {
@@ -18,15 +19,15 @@ export class LoadEhrDataService {
     async load(patientFhirId?: string) {
         const patient = await this.patientService.fetchAndStorePatient(patientFhirId);
         console.log('Patient Data Loaded');
-        const payload = await this.encountersService.fetchAndSaveEncounters(patient.fhirId);
+        await this.encountersService.fetchAndSaveEncounters(patient.fhirId);
         console.log('Practitioner and Encounter Data Loaded')
         await this.conditionsService.fetchAndSaveConditions(patient.fhirId);
         console.log('Conditions Loaded');
         await this.careplansService.fetchAndSaveCarePlans(patient.fhirId);
-        console.log('Care Plans Loaded')
+        console.log('Care Plans Loaded');
         await this.medicationsService.fetchAndSaveMedications(patient.fhirId);
         console.log('Medication Data Loaded');
-        return payload;
+        return new ApiResponseDTO({ message: 'Data Loaded Successfully', status: 'success', data: patient });
     }
 
 }
