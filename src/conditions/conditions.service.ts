@@ -34,9 +34,8 @@ export class ConditionsService {
         for (const entry of entries) {
             const cond = entry?.resource;
             const existing = await this.conditionRepo.findOne({ where: { fhirId: cond.id } });
-            if (existing) continue;
 
-            const condition = this.conditionRepo.create({
+            let condition = this.conditionRepo.create({
                 fhirId: cond.id,
                 clinicalStatus: cond.clinicalStatus?.coding?.[0]?.code || null,
                 verificationStatus: cond.verificationStatus?.coding?.[0]?.code || null,
@@ -56,6 +55,9 @@ export class ConditionsService {
                     condition.encounter = encounter;
                 }
             }
+
+            if (existing)
+                condition.id = existing.id
 
             await this.conditionRepo.save(condition);
         }

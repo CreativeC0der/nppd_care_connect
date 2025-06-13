@@ -12,7 +12,7 @@ export class CarePlanActivity {
     @Column({ nullable: true })
     status: string; // "scheduled", "in-progress", etc.
 
-    @ManyToOne(() => CarePlan, carePlan => carePlan.activities, { onDelete: 'CASCADE', nullable: false })
+    @ManyToOne(() => CarePlan, carePlan => carePlan.activities, { nullable: false, cascade: true, orphanedRowAction: 'delete' })
     @JoinColumn({ name: 'careplan_id' })
     carePlan: CarePlan;
 }

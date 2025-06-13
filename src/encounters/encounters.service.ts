@@ -34,9 +34,8 @@ export class EncountersService {
         for (const entry of entries) {
             const resource = entry?.resource;
             const existing = await this.encounterRepo.findOne({ where: { fhirId: resource.id } });
-            if (existing) continue;
 
-            const encounter = this.encounterRepo.create({
+            let encounter = this.encounterRepo.create({
                 fhirId: resource?.id || '',
                 status: resource?.status || '',
                 type: resource.type?.[0]?.text ?? null,
@@ -59,6 +58,11 @@ export class EncountersService {
             }
 
             encounter.practitioners = practitioners;
+
+            // Save the encounter
+            if (existing)
+                encounter.id = existing.id
+
             await this.encounterRepo.save(encounter);
         }
 

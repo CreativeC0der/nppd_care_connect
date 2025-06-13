@@ -11,9 +11,6 @@ import { Redis } from 'ioredis';
         port: parseInt(process.env.REDIS_PORT!)
       })
       console.log('Redis connected')
-      redis.get('notification-mails', (err, result) => {
-        err ? console.error('Error getting data from Redis:', err) : console.log('Data from Redis:', result);
-      });
       // redis.set('notification-mails', JSON.stringify([]))
       return redis
     },

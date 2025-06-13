@@ -8,9 +8,10 @@ import { HttpModule } from '@nestjs/axios';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
+import { RedisModule } from 'src/Utils/redis/redis.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CarePlan, CarePlanActivity, Patient, Encounter, Condition]), HttpModule],
+  imports: [TypeOrmModule.forFeature([CarePlan, CarePlanActivity, Patient, Encounter, Condition]), HttpModule, RedisModule],
   controllers: [CareplansController],
   providers: [CareplanService],
   exports: [CareplanService, TypeOrmModule]

@@ -2,66 +2,91 @@
 <html>
 
 <head>
-    <meta charset="UTF-8" />
-    <title>Daily Care Plan Reminder</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f4f8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
             margin: 0;
-            padding: 0;
+            padding: 30px;
         }
 
         .container {
             background-color: #ffffff;
+            padding: 30px 40px;
             max-width: 600px;
-            margin: 30px auto;
-            padding: 24px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            margin: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         h2 {
-            color: #1e40af;
+            color: #1e3a8a;
+            margin-bottom: 10px;
         }
 
         p {
-            color: #333;
+            font-size: 16px;
+            color: #374151;
             line-height: 1.6;
         }
 
-        .button {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #1e40af;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 6px;
+        strong {
+            color: #111827;
+            font-weight: 600;
+        }
+
+        ul {
+            background-color: #f9fafb;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            margin: 20px 0;
+            list-style-type: disc;
+            list-style-position: inside;
+        }
+
+        li {
+            font-size: 15px;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+
+        em {
+            color: #10b981;
+            font-style: normal;
+            font-weight: 500;
         }
 
         .footer {
-            font-size: 0.9em;
-            color: #888;
-            margin-top: 30px;
+            font-size: 12px;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h2>Hello {{params.name}},</h2>
+        <h2>Hi {{params.patient.firstName}},</h2>
+        <p>This is a gentle reminder to follow your care plan for:</p>
+        <h3>{{params.category}}</h3>
 
-        <p>This is a gentle reminder to follow your care plan today and log your daily feedback in the app.</p>
+        <p>Your active care plan activities:</p>
+        <ul>
+            {% for activity in params.activities %}
+            <li>{{ activity.detailText }} — <em>{{ activity.status }}</em></li>
+            {% endfor %}
+        </ul>
 
-        <p>Your consistency is important for your health and helps your doctor provide the best care possible.</p>
+        <p>Please stay consistent with your activities to support your health.</p>
 
-        <p>If you notice anything unusual or have any questions, please don't hesitate to reach out to your doctor.</p>
-
-        <a href="https://yourapp.com/patient/dashboard" class="button">Log Today's Feedback</a>
+        <p>Thank you,<br />Your Healthcare Team</p>
 
         <div class="footer">
-            <p>Wishing you good health,<br>The Care Team</p>
+            This is an automated reminder. Please contact your provider if you have any questions.
         </div>
     </div>
 </body>

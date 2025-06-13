@@ -1,6 +1,6 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { CareplanService } from './careplans.service';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
@@ -13,10 +13,10 @@ export class CareplansController {
 
   }
 
-  // @Post('create')
-  // @ApiResponse({ status: 201, type: ApiResponseDTO })
-  // createCarePlan(@Body() carePlanData: CreateCarePlanDTO, @Req() req: Request) {
-  //   const payload = this.carePlansService.createCarePlan(carePlanData, req);
-  //   return new ApiResponseDTO({ message: 'Care plan created successfully', data: payload, status: 'success' })
-  // }
+  @Post('create')
+  @ApiResponse({ status: 201, type: ApiResponseDTO })
+  createCarePlan(@Body() carePlanData: CreateCarePlanDTO, @Req() req: Request) {
+    const payload = this.carePlansService.createCarePlan(carePlanData, req);
+    return new ApiResponseDTO({ message: 'Care plan created successfully', data: payload, status: 'success' })
+  }
 }

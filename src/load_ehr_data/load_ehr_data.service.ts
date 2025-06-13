@@ -15,8 +15,8 @@ export class LoadEhrDataService {
         private medicationsService: MedicationsService,
     ) { }
 
-    async load() {
-        const patient = await this.patientService.fetchAndStorePatient();
+    async load(patientFhirId?: string) {
+        const patient = await this.patientService.fetchAndStorePatient(patientFhirId);
         console.log('Patient Data Loaded');
         const payload = await this.encountersService.fetchAndSaveEncounters(patient.fhirId);
         console.log('Practitioner and Encounter Data Loaded')

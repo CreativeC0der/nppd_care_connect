@@ -36,9 +36,8 @@ export class MedicationsService {
         for (const entry of entries) {
             const med = entry.resource;
             const existing = await this.medRepo.findOne({ where: { fhirId: med.id } });
-            if (existing) continue;
 
-            const medication = this.medRepo.create({
+            let medication = this.medRepo.create({
                 fhirId: med.id,
                 status: med.status,
                 intent: med.intent,
@@ -60,6 +59,9 @@ export class MedicationsService {
                 const practitioner = await this.practitionerRepo.findOne({ where: { fhirId: practitionerId } });
                 if (practitioner) medication.practitioner = practitioner;
             }
+
+            if (existing)
+                medication.id = existing.id
 
             await this.medRepo.save(medication);
         }

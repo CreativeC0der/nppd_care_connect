@@ -21,20 +21,21 @@ export class PatientsService {
         private otpService: OtpService
     ) { }
 
-    async fetchAndStorePatient() {
+    async fetchAndStorePatient(fhir_id?: string) {
         try {
-            const url = `https://r4.smarthealthit.org/Patient/?_count=1`;
+            // if fhir_id is not provided, fetch one random patient
+            const url = `https://r4.smarthealthit.org/Patient/${fhir_id ?? '?_count=1'}`;
+
+            console.log(url)
 
             const response = await lastValueFrom(this.httpService.get(url))
-            const data = response.data.entry[0].resource;
+            const data = response.data.entry?.[0]?.resource ?? response.data;
+            // console.log(data)
             console.log('Patient Data retrieved:')
 
             let existingPatient = await this.patientRepository.findOne({
                 where: { fhirId: data?.id },
             });
-
-            if (existingPatient)
-                throw new BadRequestException('Patient already exists')
 
             const identifier = data?.id || randomUUID();
             const nameObj = data.name?.[0] || {};
@@ -42,7 +43,7 @@ export class PatientsService {
             const address = data.address?.[0] || {};
             const language = data.communication?.[0]?.language?.text;
 
-            const patient = this.patientRepository.create({
+            let patient = this.patientRepository.create({
                 fhirId: identifier,
                 firstName: nameObj.given?.[0] || '',
                 lastName: nameObj.family || '',
@@ -58,7 +59,11 @@ export class PatientsService {
                 dateOfDeath: data.deceasedDateTime,
             });
 
-            await this.patientRepository.save(patient);
+            // if patient already exists, update it with the provided data
+            if (existingPatient)
+                patient.id = existingPatient.id
+
+            patient = await this.patientRepository.save(patient);
             return patient;
         }
         catch (err) {

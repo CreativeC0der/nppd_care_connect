@@ -31,7 +31,7 @@ export class CarePlan {
     @JoinColumn({ name: 'patient_id' })
     patient: Patient;
 
-    @OneToMany(() => CarePlanActivity, activity => activity.carePlan, { cascade: true })
+    @OneToMany(() => CarePlanActivity, activity => activity.carePlan)
     activities: CarePlanActivity[];
 
     @ManyToOne(() => Encounter, encounter => encounter.carePlans, { cascade: true, nullable: true })

@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Patient } from 'src/patients/entities/patient.entity';
@@ -9,6 +9,7 @@ import { CarePlan } from './entities/careplan.entity';
 import { log } from 'console';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
+import Redis from 'ioredis';
 
 @Injectable()
 export class CareplanService {
@@ -25,7 +26,8 @@ export class CareplanService {
         @InjectRepository(Encounter)
         private readonly encounterRepo: Repository<Encounter>,
         @InjectRepository(Condition)
-        private readonly conditionRepo: Repository<Condition>
+        private readonly conditionRepo: Repository<Condition>,
+        @Inject('REDIS_CLIENT') private readonly redisClient: Redis
     ) { }
 
     async fetchAndSaveCarePlans(patientFhirId: string) {
@@ -39,13 +41,11 @@ export class CareplanService {
         if (!patient) throw new NotFoundException(`Patient with FHIR ID ${patientFhirId} not found.`);
 
         for (const entry of entries) {
-            const cp = entry.resource;
+            const cp = entry.resource ?? {};
             const encounterId = cp.encounter?.reference?.split('/')?.[1]
 
-            const existing = await this.carePlanRepo.findOne({ where: { fhirId: cp.id } });
-            if (existing) continue; // Skip if already exists
-
             const encounter = await this.encounterRepo.findOne({ where: { fhirId: encounterId } });
+            const existing = await this.carePlanRepo.findOne({ where: { fhirId: cp.id } });
 
             const carePlan = this.carePlanRepo.create({
                 fhirId: cp.id,
@@ -68,12 +68,16 @@ export class CareplanService {
             });
 
             carePlan.conditions = conditions;
+            carePlan.activities = [] // delete all activities if present
+
+            if (existing)
+                carePlan.id = existing.id
 
             // Save the care plan
             const newCarePlan = await this.carePlanRepo.save(carePlan);
 
             // Save the activities
-            const activities = (cp.activity || []).map(act => {
+            const activities = cp.activity?.map(act => {
                 const detail = act.detail || {};
                 return this.activityRepo.create({
                     carePlan: newCarePlan,
@@ -83,8 +87,33 @@ export class CareplanService {
             });
 
             await this.activityRepo.save(activities);
+            this.updateRedisCache(newCarePlan.fhirId);
         }
 
         console.log('Care plans and activities saved.')
     }
+
+    async updateRedisCache(carePlanId: string) {
+        const carePlan = await this.carePlanRepo.findOne({
+            where: { fhirId: carePlanId },
+            relations: ['activities', 'patient']
+        });
+
+        if (!carePlan)
+            throw new NotFoundException('CarePlan not found');
+
+        const redisKey = 'care-plan-notifications'
+        const redisCarePlanData = JSON.parse(await this.redisClient.get(redisKey) ?? '{}');
+
+        if (carePlan.status === 'active')
+            redisCarePlanData[carePlanId] = { ...carePlan }
+        else
+            delete redisCarePlanData[carePlanId];
+
+        await this.redisClient.set(redisKey, JSON.stringify(redisCarePlanData));
+        console.log('Redis cache updated for care plan notifications')
+    }
+
+
+
 }
