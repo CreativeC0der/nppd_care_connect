@@ -15,6 +15,7 @@ import { ConditionsModule } from './conditions/conditions.module';
 import { MedicationsModule } from './medications/medications.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronModule } from './Utils/cron/cron.module';
+import { ObservationsModule } from './observations/observations.module';
 
 @Module({
   imports: [
@@ -47,7 +48,8 @@ import { CronModule } from './Utils/cron/cron.module';
     EncountersModule,
     ConditionsModule,
     MedicationsModule,
-    CronModule
+    CronModule,
+    ObservationsModule
   ],
   controllers: [AppController, LoadEhrDataController],
   providers: [AppService, LoadEhrDataService],

@@ -27,7 +27,7 @@ export class CarePlan {
     @Column({ type: 'date', nullable: true })
     endDate: Date | null;
 
-    @ManyToOne(() => Patient, { nullable: true, onDelete: 'CASCADE', cascade: true })
+    @ManyToOne(() => Patient, { nullable: false, onDelete: 'CASCADE', cascade: true })
     @JoinColumn({ name: 'patient_id' })
     patient: Patient;
 

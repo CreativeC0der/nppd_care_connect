@@ -1,6 +1,7 @@
 import { CarePlan } from 'src/careplans/entities/careplan.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
 import { Medication } from 'src/medications/entities/medication.entity';
+import { Observation } from 'src/observations/entities/observation.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import {
@@ -59,4 +60,7 @@ export class Encounter {
 
     @OneToMany(() => Medication, medication => medication.encounter)
     medications: Medication[];
+
+    @OneToMany(() => Observation, observation => observation.encounter)
+    observations: Observation[];
 }

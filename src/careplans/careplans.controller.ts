@@ -1,32 +1,49 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, InternalServerErrorException, NotFoundException, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { CareplanService } from './careplans.service';
-import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
+import { CreateCareplanDto } from './dto/create_cp.dto';
+import { Roles } from 'src/Utils/decorators/roles.decorator';
+import { Role } from 'src/Utils/enums/role.enum';
+import { UpdateCareplanDto } from './dto/update_cp.dto';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
-import { CreateCareplanDto } from './dto/create_cp.dto';
 
 @Controller('careplans')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiBearerAuth('access-token')
 export class CareplansController {
-  constructor(private readonly carePlansService: CareplanService) {
-
-  }
+  constructor(private readonly carePlansService: CareplanService) { }
 
   @Post('create')
   @ApiResponse({ status: 201, type: ApiResponseDTO })
-  createCarePlan(@Body() carePlanData: CreateCareplanDto, @Req() req: Request) {
-    const payload = this.carePlansService.createCarePlan(carePlanData, req);
-    return new ApiResponseDTO({ message: 'Care plan created successfully', data: payload, status: 'success' })
+  @Roles([Role.DOCTOR])
+  async createCarePlan(@Body() carePlanData: CreateCareplanDto) {
+    try {
+      const payload = await this.carePlansService.createCarePlan(carePlanData);
+      return new ApiResponseDTO({ message: 'Care plan created successfully', data: payload, status: 'success' })
+    }
+    catch (err) {
+      if (err instanceof NotFoundException)
+        throw err;
+      throw new InternalServerErrorException('Care plan creation failed')
+    }
   }
 
-  @Get('get/:id')
+  @Get('get/:patientId')
+  @Roles([Role.DOCTOR])
   @ApiResponse({ status: 200, type: ApiResponseDTO })
-  getCarePlan(@Param('id') id: string, @Req() req: Request) {
-    const payload = this.carePlansService.getCarePlan(id, req);
-    return new ApiResponseDTO({ message: 'Care plan fetched successfully', data: payload, status: 'success' });
+  @ApiParam({ name: 'patientId', description: 'care plans for patient id' })
+  async getCarePlan(@Param('patientId') patientId: string) {
+    const payload = await this.carePlansService.getByPatientFhirId(patientId);
+    return new ApiResponseDTO({ message: 'Care plans fetched successfully', data: payload, status: 'success' });
   }
+
+  @Put('update/:carePlanFhirId')
+  @Roles([Role.DOCTOR])
+  async updateCarePlan(@Param('carePlanFhirId') carePlanFhirId: string, @Body() carePlanData: UpdateCareplanDto) {
+    const payload = await this.carePlansService.updateCarePlan(carePlanFhirId, carePlanData);
+    return new ApiResponseDTO({ message: 'Care plan updated successfully', data: payload, status: 'success' });
+  }
+
 }

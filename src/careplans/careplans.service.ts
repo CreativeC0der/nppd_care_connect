@@ -1,9 +1,9 @@
 import { HttpService } from '@nestjs/axios';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Patient } from 'src/patients/entities/patient.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CarePlanActivity } from './entities/careplan-activity.entity';
 import { CarePlan } from './entities/careplan.entity';
 import { log } from 'console';
@@ -11,6 +11,10 @@ import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
 import { CreateCareplanDto } from './dto/create_cp.dto';
 import Redis from 'ioredis';
+import { AuthGuard } from 'src/Utils/guards/auth.guard';
+import { RolesGuard } from 'src/Utils/guards/role.guard';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { UpdateCareplanDto } from './dto/update_cp.dto';
 
 @Injectable()
 export class CareplanService {
@@ -95,15 +99,14 @@ export class CareplanService {
     }
 
     async createCarePlan(createCareplanDto: CreateCareplanDto): Promise<CarePlan> {
-        const { patientId, encounterId, conditionIds, activities, ...carePlanData } = createCareplanDto;
+        const { patientFhirId, encounterFhirId, conditionFhirIds, activities, ...carePlanData } = createCareplanDto;
 
-        const patient = await this.patientRepo.findOne({ where: { id: patientId } });
-        if (!patient) {
-            throw new NotFoundException(`Patient with ID ${patientId} not found`);
-        }
+        const patient = await this.patientRepo.findOne({ where: { fhirId: patientFhirId } });
+        if (!patient)
+            throw new NotFoundException(`Patient with ID ${patientFhirId} not found`);
 
-        const encounter = encounterId ? await this.encounterRepo.findOne({ where: { id: encounterId } }) : null;
-        const conditions = conditionIds ? await this.conditionRepo.findByIds(conditionIds) : [];
+        const encounter = encounterFhirId ? await this.encounterRepo.findOne({ where: { fhirId: encounterFhirId } }) : null;
+        const conditions = conditionFhirIds ? await this.conditionRepo.find({ where: { fhirId: In(conditionFhirIds) } }) : [];
 
         const carePlan = this.carePlanRepo.create({
             ...carePlanData,
@@ -118,7 +121,24 @@ export class CareplanService {
             this.activityRepo.create({ ...activityDto, carePlan: savedCarePlan }),
         );
         await this.activityRepo.save(carePlanActivities);
+        this.updateRedisCache(savedCarePlan.fhirId);
         return savedCarePlan;
+    }
+
+
+    async getByPatientFhirId(fhirId: string) {
+        const patient = await this.patientRepo.findOne({
+            where: { fhirId },
+        });
+
+        if (!patient) throw new NotFoundException('Patient not found');
+
+        return this.carePlanRepo.find({
+            where: {
+                patient: { id: patient.id }
+            },
+            relations: ['activities', 'conditions'],
+        });
     }
 
     async updateRedisCache(carePlanId: string) {
@@ -141,7 +161,63 @@ export class CareplanService {
         await this.redisClient.set(redisKey, JSON.stringify(redisCarePlanData));
         console.log('Redis cache updated for care plan notifications')
     }
+    async updateCarePlan(fhirId: string, updateDto: UpdateCareplanDto) {
+        const existing = await this.carePlanRepo.findOne({
+            where: { fhirId },
+            relations: ['patient', 'encounter', 'conditions', 'activities'],
+        });
 
+        if (!existing) throw new NotFoundException(`CarePlan with FHIR ID ${fhirId} not found`);
+
+        const {
+            patientFhirId,
+            encounterFhirId,
+            conditionFhirIds,
+            activities,
+            ...carePlanData
+        } = updateDto;
+
+        // Update patient if provided
+        if (patientFhirId) {
+            const patient = await this.patientRepo.findOne({ where: { fhirId: patientFhirId } });
+            if (!patient) throw new NotFoundException(`Patient with ID ${patientFhirId} not found`);
+            existing.patient = patient;
+        }
+
+        // Update encounter if provided
+        if (encounterFhirId) {
+            const encounter = await this.encounterRepo.findOne({ where: { fhirId: encounterFhirId } });
+            if (!encounter) throw new NotFoundException(`Encounter with ID ${encounterFhirId} not found`);
+            existing.encounter = encounter;
+        }
+
+        // Update conditions if provided
+        if (conditionFhirIds) {
+            const conditions = await this.conditionRepo.find({ where: { fhirId: In(conditionFhirIds) } });
+            existing.conditions = conditions;
+        }
+
+        // Update basic fields
+        Object.assign(existing, carePlanData);
+
+        // Save updated care plan
+        const savedCarePlan = await this.carePlanRepo.save(existing);
+
+        // Replace activities if provided
+        if (activities) {
+            await this.activityRepo.delete({ carePlan: { id: savedCarePlan.id } }); // delete old
+            const newActivities = activities.map(dto =>
+                this.activityRepo.create({ ...dto, carePlan: savedCarePlan }),
+            );
+            await this.activityRepo.save(newActivities);
+        }
+
+        // Update cache
+        this.updateRedisCache(savedCarePlan.fhirId);
+
+        return savedCarePlan;
+    }
 
 
 }
+

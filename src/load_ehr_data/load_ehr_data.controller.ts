@@ -9,10 +9,8 @@ export class LoadEhrDataController {
     constructor(private loadEhrDataService: LoadEhrDataService) { }
     @Get('/loadData')
     @ApiResponse({ type: ApiResponseDTO })
-    async loadData() {
-        return this.loadEhrDataService.load();
-        @ApiQuery({ name: 'fhir_id', type: 'string', required: false })
-        async loadData(@Query('fhir_id') fhirId ?: string) {
-            return this.loadEhrDataService.load(fhirId);
-        }
+    @ApiQuery({ name: 'fhir_id', type: 'string', required: false })
+    async loadData(@Query('fhir_id') fhirId?: string) {
+        return this.loadEhrDataService.load(fhirId);
     }
+}

@@ -16,16 +16,12 @@ import { CareplanActivityDto } from './cp_activity.dto';
 export class CreateCareplanDto {
     @ApiProperty({ example: 'cp-001', description: 'Unique identifier for the care plan' })
     @IsString()
-    careplanId: string;
-
-    @ApiProperty({ example: 'Diabetes Management Plan', description: 'Name of the care plan' })
-    @IsString()
-    name: string;
+    fhirId: string;
 
     @ApiProperty({ example: 'Plan for managing type 2 diabetes', description: 'Description of the care plan', required: false })
     @IsOptional()
     @IsString()
-    description?: string;
+    category?: string;
 
     @ApiProperty({ example: 'active', description: 'Status of the care plan (e.g., active, completed, cancelled)' })
     @IsString()
