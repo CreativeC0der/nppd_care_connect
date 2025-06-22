@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 
-import { Medication } from './entities/medication.entity';
+import { MedicationRequest } from './entities/medication-request.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
@@ -15,8 +15,8 @@ export class MedicationsService {
 
     constructor(
         private readonly http: HttpService,
-        @InjectRepository(Medication)
-        private readonly medRepo: Repository<Medication>,
+        @InjectRepository(MedicationRequest)
+        private readonly medRepo: Repository<MedicationRequest>,
         @InjectRepository(Patient)
         private readonly patientRepo: Repository<Patient>,
         @InjectRepository(Encounter)

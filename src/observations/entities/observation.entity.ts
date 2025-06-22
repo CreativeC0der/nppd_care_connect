@@ -1,3 +1,5 @@
+import { Type } from 'class-transformer';
+import { IsNumber, IsString } from 'class-validator';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import {
@@ -5,14 +7,16 @@ import {
     PrimaryGeneratedColumn,
     Column,
     ManyToOne,
+    Index,
 } from 'typeorm';
 
-@Entity()
+@Entity('observations')
+@Index(['fhirId', 'code'], { unique: true })
 export class Observation {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column()
     fhirId: string;
 
     @Column()
@@ -30,10 +34,10 @@ export class Observation {
     @Column({ type: 'timestamp', nullable: true })
     issued: Date;
 
-    @Column({ type: 'float', nullable: true })
-    value: number;
+    @Column()
+    value: string;
 
-    @Column({ nullable: true })
+    @Column()
     unit: string;
 
     // Relations

@@ -24,7 +24,7 @@ export class PatientsController {
   async loginPatient(@Body() patientData: LoginPatientDto) {
     try {
       const { message, data } = await this.patientService.loginPatient(patientData);
-      return new ApiResponseDTO({ message, status: 'success', data });
+      return new ApiResponseDTO({ message, statusCode: HttpStatus.OK, data });
     }
     catch (err) {
       console.error(err);
@@ -40,7 +40,7 @@ export class PatientsController {
   async createPatient(@Body() patientData: CreatePatientDto) {
     try {
       const payload = await this.patientService.createPatient(patientData);
-      return new ApiResponseDTO({ message: 'Patient Registered Successfully', status: 'success', data: payload });
+      return new ApiResponseDTO({ message: 'Patient Registered Successfully', statusCode: HttpStatus.OK, data: payload });
     }
     catch (err) {
       console.error(err);

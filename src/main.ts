@@ -32,6 +32,13 @@ async function bootstrap() {
       transform: true, // auto-transform types
     }),
   )
+
+  // CORS
+  app.enableCors({
+    origin: 'http://localhost:5173', // Replace with your frontend URL
+    credentials: true, // If you're using cookies or authorization headers
+  });
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

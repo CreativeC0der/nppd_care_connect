@@ -11,5 +11,6 @@ import { Observation } from './entities/observation.entity';
   imports: [TypeOrmModule.forFeature([Patient, Encounter, Observation]), HttpModule],
   controllers: [ObservationsController],
   providers: [ObservationsService],
+  exports: [ObservationsService]
 })
 export class ObservationsModule { }

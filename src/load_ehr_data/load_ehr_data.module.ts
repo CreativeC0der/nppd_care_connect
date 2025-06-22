@@ -7,9 +7,10 @@ import { CareplansModule } from 'src/careplans/careplans.module';
 import { EncountersModule } from 'src/encounters/encounters.module';
 import { ConditionsModule } from 'src/conditions/conditions.module';
 import { MedicationsModule } from 'src/medications/medications.module';
+import { ObservationsModule } from 'src/observations/observations.module';
 
 @Module({
-    imports: [PatientsModule, PractitionersModule, CareplansModule, EncountersModule, ConditionsModule, MedicationsModule],
+    imports: [PatientsModule, PractitionersModule, CareplansModule, EncountersModule, ConditionsModule, MedicationsModule, ObservationsModule],
     providers: [LoadEhrDataService],
     controllers: [LoadEhrDataController]
 })

@@ -11,7 +11,7 @@ export class CronService {
         @Inject('REDIS_CLIENT') private readonly redisClient: Redis
     ) { }
 
-    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
     async handleCron() {
         try {
             const receivers: Record<string, CarePlan> = JSON.parse(await this.redisClient.get('care-plan-notifications') ?? '{}');

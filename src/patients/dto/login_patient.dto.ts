@@ -1,10 +1,12 @@
 import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
 import { CreatePatientDto } from './create_patient.dto';
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Length, Min, Max, IsNumberString } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class LoginPatientDto extends PickType(CreatePatientDto, ['fhirId']) {
-    @IsNumber()
     @IsOptional()
-    @ApiProperty({ description: 'OTP', example: 123456 })
+    @ApiProperty({ description: 'OTP', example: "123456" })
+    @Type(() => Number)
+    @IsNumber()
     otp: number;
 }

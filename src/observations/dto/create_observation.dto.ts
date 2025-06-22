@@ -30,13 +30,11 @@ export class CreateObservationDto {
     @IsDateString()
     issued?: string;
 
-    @ApiPropertyOptional({ example: 35.74, description: 'Value of the observation' })
-    @IsOptional()
-    @IsNumber()
-    value?: number;
+    @ApiPropertyOptional({ example: "35.74", description: 'Value of the observation' })
+    @IsString()
+    value?: string;
 
     @ApiPropertyOptional({ example: 'g/dL', description: 'Unit of measurement' })
-    @IsOptional()
     @IsString()
     unit?: string;
 

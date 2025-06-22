@@ -1,5 +1,5 @@
 import { Encounter } from 'src/encounters/entities/encounter.entity';
-import { Medication } from 'src/medications/entities/medication.entity';
+import { MedicationRequest } from 'src/medications/entities/medication-request.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 'typeorm';
 
@@ -41,6 +41,6 @@ export class Practitioner {
     @ManyToMany(() => Encounter, encounter => encounter.practitioners)
     encounters: Encounter[];
 
-    @OneToMany(() => Medication, medication => medication.practitioner)
-    medications: Medication[];
+    @OneToMany(() => MedicationRequest, medication => medication.practitioner)
+    medications: MedicationRequest[];
 }

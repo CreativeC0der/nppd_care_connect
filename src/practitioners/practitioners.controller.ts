@@ -19,7 +19,7 @@ export class PractitionersController {
   async loginPractitioner(@Body() PractitionerData: LoginPractitionerDto) {
     try {
       const { message, data } = await this.practitionersService.loginPractitioner(PractitionerData);
-      return new ApiResponseDTO({ message, status: 'success', data });
+      return new ApiResponseDTO({ message, statusCode: HttpStatus.OK, data });
     }
     catch (err) {
       console.error(err);
@@ -35,7 +35,7 @@ export class PractitionersController {
   async createPractitioner(@Body() PractitionerData: CreatePractitionerDto) {
     try {
       const payload = await this.practitionersService.createPractitioner(PractitionerData);
-      return new ApiResponseDTO({ message: 'Practitioner Registered Successfully', status: 'success', data: payload });
+      return new ApiResponseDTO({ message: 'Practitioner Registered Successfully', statusCode: HttpStatus.OK, data: payload });
     }
     catch (err) {
       console.error(err);

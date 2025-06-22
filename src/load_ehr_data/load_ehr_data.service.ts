@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { PatientsService } from 'src/patients/patients.service';
 import { CareplanService } from 'src/careplans/careplans.service';
 import { EncountersService } from 'src/encounters/encounters.service';
 import { ConditionsService } from 'src/conditions/conditions.service';
 import { MedicationsService } from 'src/medications/medications.service';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
+import { ObservationsService } from 'src/observations/observations.service';
 
 @Injectable()
 export class LoadEhrDataService {
@@ -14,6 +15,8 @@ export class LoadEhrDataService {
         private careplansService: CareplanService,
         private conditionsService: ConditionsService,
         private medicationsService: MedicationsService,
+        private observationsService: ObservationsService,
+
     ) { }
 
     async load(patientFhirId?: string) {
@@ -27,7 +30,10 @@ export class LoadEhrDataService {
         console.log('Care Plans Loaded');
         await this.medicationsService.fetchAndSaveMedications(patient.fhirId);
         console.log('Medication Data Loaded');
-        return new ApiResponseDTO({ message: 'Data Loaded Successfully', status: 'success', data: patient });
+        await this.observationsService.fetchAndSaveObservations(patient.fhirId);
+        console.log('Observation Data Loaded');
+
+        return new ApiResponseDTO({ message: 'Data Loaded Successfully', statusCode: HttpStatus.OK, data: patient });
     }
 
 }
