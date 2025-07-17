@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { Condition } from './entities/condition.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
+import { CreateConditionDto } from './dto/create-conditions.dto';
 
 
 @Injectable()
@@ -39,11 +40,9 @@ export class ConditionsService {
                 fhirId: cond.id,
                 clinicalStatus: cond.clinicalStatus?.coding?.[0]?.code || null,
                 verificationStatus: cond.verificationStatus?.coding?.[0]?.code || null,
-                display: cond.code?.text || null,
-                onsetDateTime: cond.onsetDateTime ? new Date(cond.onsetDateTime) : null,
-                abatementDateTime: cond.abatementDateTime ? new Date(cond.abatementDateTime) : null,
+                code: cond.code?.text || null,
                 recordedDate: cond.recordedDate ? new Date(cond.recordedDate) : null,
-                patient,
+                subject: patient,
             });
 
             // Link encounter if present
@@ -63,5 +62,28 @@ export class ConditionsService {
         }
 
         console.log('Conditions saved successfully')
+    }
+
+    async bulkCreate(dto: CreateConditionDto): Promise<Condition[]> {
+        const patient = await this.patientRepo.findOneBy({ fhirId: dto.subjectFhirId });
+        if (!patient) throw new NotFoundException('Patient not found');
+
+        const encounter = await this.encounterRepo.findOne({
+            where: {
+                fhirId: dto.encounterFhirId,
+                patient: { id: patient.id },
+            },
+        });
+        if (!encounter) throw new NotFoundException('Encounter not found for patient');
+
+        const newConditions = dto.conditions.map((cond) =>
+            this.conditionRepo.create({
+                ...cond,
+                subject: patient,
+                encounter: encounter,
+            }),
+        );
+
+        return this.conditionRepo.save(newConditions);
     }
 }

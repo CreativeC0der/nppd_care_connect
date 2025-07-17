@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 'typeorm';
+import { MedicationRequest } from './medication-request.entity';
 
-@Entity()
+@Entity('medications')
 export class Medication {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -38,4 +39,6 @@ export class Medication {
     @Column({ type: 'timestamp', nullable: true })
     batchExpirationDate: Date;
 
+    @OneToMany(() => MedicationRequest, (mr) => mr.medication)
+    medicationRequests: MedicationRequest[];
 }

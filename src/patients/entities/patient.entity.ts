@@ -1,7 +1,7 @@
 import { CarePlan } from 'src/careplans/entities/careplan.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
-import { Device } from 'src/healthbox/entities/device.entity';
+import { Device } from 'src/devices/entities/device.entity';
 import { MedicationRequest } from 'src/medications/entities/medication-request.entity';
 import { Observation } from 'src/observations/entities/observation.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
@@ -62,10 +62,10 @@ export class Patient {
     @OneToMany(() => CarePlan, carePlan => carePlan.patient)
     carePlans: CarePlan[];
 
-    @OneToMany(() => Condition, condition => condition.patient)
+    @OneToMany(() => Condition, condition => condition.subject)
     conditions: Condition[];
 
-    @OneToMany(() => MedicationRequest, medication => medication.patient)
+    @OneToMany(() => MedicationRequest, medication => medication.subject)
     medications: MedicationRequest[];
 
     @OneToMany(() => Observation, observation => observation.patient)

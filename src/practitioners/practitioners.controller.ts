@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, HttpCode, HttpStatus, InternalServerErrorException, Post, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpCode, HttpStatus, InternalServerErrorException, Post, Res, UnauthorizedException } from '@nestjs/common';
 import { PractitionersService } from './practitioners.service';
 import { ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
@@ -7,6 +7,7 @@ import { Roles } from 'src/Utils/decorators/roles.decorator';
 import { Role } from 'src/Utils/enums/role.enum';
 import { CreatePractitionerDto } from './dto/create_practitioner.dto';
 import { LoginPractitionerDto } from './dto/login_practitioner.dto';
+import { Response } from 'express';
 
 @Controller('practitioners')
 export class PractitionersController {
@@ -16,9 +17,15 @@ export class PractitionersController {
   @HttpCode(HttpStatus.OK)
   @Public()
   @ApiResponse({ type: ApiResponseDTO })
-  async loginPractitioner(@Body() PractitionerData: LoginPractitionerDto) {
+  async loginPractitioner(@Body() PractitionerData: LoginPractitionerDto, @Res({ passthrough: true }) res: Response) {
     try {
-      const { message, data } = await this.practitionersService.loginPractitioner(PractitionerData);
+      const { message, data, accessToken } = await this.practitionersService.loginPractitioner(PractitionerData);
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: false, // use false in dev (http), true in prod (https)
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 1000, // 15 mins
+      })
       return new ApiResponseDTO({ message, statusCode: HttpStatus.OK, data });
     }
     catch (err) {

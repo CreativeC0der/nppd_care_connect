@@ -1,3 +1,5 @@
+import { Appointment } from 'src/appointments/entities/appointment.entity';
+import { Schedule } from 'src/schedules/entities/schedule.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { MedicationRequest } from 'src/medications/entities/medication-request.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
@@ -41,6 +43,12 @@ export class Practitioner {
     @ManyToMany(() => Encounter, encounter => encounter.practitioners)
     encounters: Encounter[];
 
-    @OneToMany(() => MedicationRequest, medication => medication.practitioner)
+    @OneToMany(() => MedicationRequest, medication => medication.requester)
     medications: MedicationRequest[];
+
+    @ManyToMany(() => Appointment, appointment => appointment.participants)
+    appointments: Appointment[];
+
+    @OneToMany(() => Schedule, schedule => schedule.actor)
+    schedules: Schedule[];
 }

@@ -8,7 +8,32 @@ import {
     ManyToOne,
     JoinColumn,
     ManyToMany,
+    JoinTable,
 } from 'typeorm';
+
+export enum ClinicalStatus {
+    ACTIVE = 'active',
+    RECURRENCE = 'recurrence',
+    RELAPSE = 'relapse',
+    INACTIVE = 'inactive',
+    REMISSION = 'remission',
+    RESOLVED = 'resolved',
+    UNKNOWN = 'unknown',
+}
+
+export enum VerificationStatus {
+    UNCONFIRMED = 'unconfirmed',
+    PROVISIONAL = 'provisional',
+    DIFFERENTIAL = 'differential',
+    CONFIRMED = 'confirmed',
+    REFUTED = 'refuted',
+    ENTERED_IN_ERROR = 'entered-in-error',
+}
+export enum ConditionSeverity {
+    MILD = 'mild',
+    MODERATE = 'moderate',
+    SEVERE = 'severe',
+}
 
 @Entity('conditions')
 export class Condition {
@@ -18,30 +43,47 @@ export class Condition {
     @Column({ unique: true })
     fhirId: string;
 
-    @Column({ nullable: true })
-    clinicalStatus: string;
+    @Column({
+        type: 'enum',
+        enum: ClinicalStatus,
+    })
+    clinicalStatus: ClinicalStatus;
+
+    @Column({
+        type: 'enum',
+        enum: VerificationStatus,
+        nullable: true,
+    })
+    verificationStatus?: VerificationStatus;
+
+    @Column({
+        type: 'enum',
+        enum: ConditionSeverity,
+        nullable: true,
+    })
+    severity?: ConditionSeverity;
 
     @Column({ nullable: true })
-    verificationStatus: string;
+    code: string;
 
     @Column({ nullable: true })
-    display: string;
+    bodySite: string;
 
     @Column({ type: 'timestamp', nullable: true })
-    onsetDateTime: Date | null;
-
-    @Column({ type: 'timestamp', nullable: true })
-    abatementDateTime: Date | null;
+    onsetDateTime: Date;
 
     @Column({ type: 'timestamp', nullable: true })
     recordedDate: Date | null;
 
+    @Column({ nullable: true })
+    note: string;
+
     @ManyToOne(() => Patient, patient => patient.conditions, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'patient_id' })
-    patient: Patient;
+    subject: Patient;
 
     @ManyToOne(() => Encounter, encounter => encounter.conditions, { onDelete: 'SET NULL' })
-    @JoinColumn({ name: 'encounter_id' })
+    @JoinColumn()
     encounter: Encounter;
 
     @ManyToMany(() => CarePlan, carePlan => carePlan.conditions)

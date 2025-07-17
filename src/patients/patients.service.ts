@@ -107,7 +107,8 @@ export class PatientsService {
 
                 return {
                     message: 'OTP Valid',
-                    data: { accessToken, existingUser }
+                    accessToken,
+                    data: existingUser
                 };
             }
             else
@@ -125,5 +126,12 @@ export class PatientsService {
             throw new BadRequestException('Patient Already Exists');
         const newPatient = this.patientRepository.create({ ...patientData });
         return this.patientRepository.save(newPatient)
+    }
+
+
+    async getAllPatients(): Promise<Patient[]> {
+        return this.patientRepository.find({
+            order: { createdAt: 'DESC' },
+        });
     }
 }

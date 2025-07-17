@@ -19,6 +19,11 @@ import { ObservationsModule } from './observations/observations.module';
 import { HealthboxModule } from './healthbox/healthbox.module';
 import { NutritionProductModule } from './nutrition-product/nutrition-product.module';
 import { DevicesModule } from './devices/devices.module';
+import { AppointmentsModule } from './appointments/appointments.module';
+import { SchedulesModule } from './schedules/schedules.module';
+import { QuestionnaireModule } from './questionnaire/questionnaire.module';
+import { ServiceRequestsModule } from './service-requests/service-requests.module';
+import { PastMedicalRecordsModule } from './past-medical-records/past-medical-records.module';
 
 @Module({
   imports: [
@@ -35,7 +40,9 @@ import { DevicesModule } from './devices/devices.module';
       password: process.env.DB_PASSWORD || 'password',
       database: process.env.DB_NAME || 'healthcare_db',
       autoLoadEntities: true,
-      synchronize: true, // Set to false in production
+      synchronize: true, // Set to false in production,
+      // logging: true,
+      // logger: 'advanced-console'
     }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'defaultSecretKey',
@@ -55,7 +62,12 @@ import { DevicesModule } from './devices/devices.module';
     ObservationsModule,
     HealthboxModule,
     NutritionProductModule,
-    DevicesModule
+    DevicesModule,
+    AppointmentsModule,
+    SchedulesModule,
+    QuestionnaireModule,
+    ServiceRequestsModule,
+    PastMedicalRecordsModule
   ],
   controllers: [AppController, LoadEhrDataController],
   providers: [AppService, LoadEhrDataService],

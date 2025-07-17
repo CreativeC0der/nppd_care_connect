@@ -7,9 +7,10 @@ import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { Encounter } from './entities/encounter.entity';
 import { PractitionersModule } from 'src/practitioners/practitioners.module';
 import { HttpModule } from '@nestjs/axios';
+import { Appointment } from 'src/appointments/entities/appointment.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Encounter, Practitioner, Patient]), PractitionersModule, HttpModule],
+  imports: [TypeOrmModule.forFeature([Encounter, Practitioner, Patient, Appointment]), PractitionersModule, HttpModule],
   controllers: [EncountersController],
   providers: [EncountersService],
   exports: [EncountersService, TypeOrmModule]

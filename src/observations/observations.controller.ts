@@ -1,15 +1,14 @@
-import { BadRequestException, Body, Controller, HttpCode, HttpStatus, InternalServerErrorException, NotFoundException, Param, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, NotFoundException, Param, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ObservationsService } from './observations.service';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { CreateCareplanDto } from 'src/careplans/dto/create_cp.dto';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
 import { CreateObservationDto } from 'src/observations/dto/create_observation.dto';
 import { Roles } from 'src/Utils/decorators/roles.decorator';
 import { Role } from 'src/Utils/enums/role.enum';
-import { Request } from 'express';
 import { UpdateObservationDto } from './dto/update_observation.dto';
+import { Observation } from './entities/observation.entity';
 
 @Controller('observations')
 @Controller('careplans')
@@ -23,8 +22,8 @@ export class ObservationsController {
   @Roles([Role.PATIENT, Role.DOCTOR])
   async createObservation(@Body() observationDto: CreateObservationDto, @Req() request: any) {
     try {
-      const payload = await this.observationsService.createObservation(observationDto, request);
-      return new ApiResponseDTO({ message: 'Observation created successfully', data: payload, statusCode: HttpStatus.OK })
+      const payload = await this.observationsService.createObservations(observationDto, request);
+      return new ApiResponseDTO({ message: 'Observations created successfully', data: payload, statusCode: HttpStatus.CREATED })
     }
     catch (err) {
       console.error(err);
@@ -51,4 +50,25 @@ export class ObservationsController {
     }
 
   }
+
+  @Get('get-by-encounter/:encounterFhirId')
+  @ApiOperation({ summary: 'Get all observations by encounter FHIR ID' })
+  @ApiOkResponse({ type: [Observation] })
+  @Roles([Role.DOCTOR, Role.STAFF])
+  async getByEncounter(
+    @Param('encounterFhirId') encounterFhirId: string,
+  ): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.observationsService.getByEncounterFhirId(encounterFhirId);
+      return new ApiResponseDTO({
+        message: 'Observations fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
 }

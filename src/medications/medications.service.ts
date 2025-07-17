@@ -1,22 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { firstValueFrom } from 'rxjs';
-import { HttpService } from '@nestjs/axios';
-
 import { MedicationRequest } from './entities/medication-request.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
+import { CreateMedicationDto } from './dto/create-medication.dto';
+import { Medication } from './entities/medication.entity';
+import { CreateMedicationRequestDto } from './dto/create-medication-request.dto';
 
 @Injectable()
 export class MedicationsService {
     private readonly fhirBase = 'https://r4.smarthealthit.org';
 
     constructor(
-        private readonly http: HttpService,
         @InjectRepository(MedicationRequest)
-        private readonly medRepo: Repository<MedicationRequest>,
+        private readonly medicationRequestRepo: Repository<MedicationRequest>,
+        @InjectRepository(Medication)
+        private readonly medicationRepo: Repository<Medication>,
         @InjectRepository(Patient)
         private readonly patientRepo: Repository<Patient>,
         @InjectRepository(Encounter)
@@ -25,47 +26,63 @@ export class MedicationsService {
         private readonly practitionerRepo: Repository<Practitioner>,
     ) { }
 
-    async fetchAndSaveMedications(patientFhirId: string) {
-        const url = `${this.fhirBase}/MedicationRequest?patient=Patient/${patientFhirId}`;
-        const response = await firstValueFrom(this.http.get(url));
-        const entries = response.data?.entry || [];
+    async create(dto: CreateMedicationDto): Promise<Medication> {
+        const exists = await this.medicationRepo.findOneBy({ fhirId: dto.fhirId });
+        if (exists) throw new BadRequestException('Medication with this FHIR ID already exists');
 
-        const patient = await this.patientRepo.findOne({ where: { fhirId: patientFhirId } });
-        if (!patient) throw new Error('Patient not found');
+        const medication = this.medicationRepo.create({
+            ...dto,
+            batchExpirationDate: dto.batchExpirationDate ? new Date(dto.batchExpirationDate) : undefined,
+        });
 
-        for (const entry of entries) {
-            const med = entry.resource;
-            const existing = await this.medRepo.findOne({ where: { fhirId: med.id } });
+        return this.medicationRepo.save(medication)
+    }
 
-            let medication = this.medRepo.create({
-                fhirId: med.id,
-                status: med.status,
-                intent: med.intent,
-                display: med.medicationCodeableConcept?.text || null,
-                authoredOn: med.authoredOn ? new Date(med.authoredOn) : null,
-                patient: patient,
+    async findAll(): Promise<Medication[]> {
+        return this.medicationRepo.find();
+    }
+
+    async createBulk(dto: CreateMedicationRequestDto) {
+        const { subjectFhirId, encounterFhirId, requesterFhirId, authoredOn, fhirId, requests } = dto;
+
+        const patient = await this.patientRepo.findOneBy({ fhirId: subjectFhirId });
+        if (!patient) throw new NotFoundException('Patient not found');
+
+        const requester = await this.practitionerRepo.findOneBy({ fhirId: requesterFhirId });
+        if (!requester) throw new NotFoundException('Practitioner not found');
+
+        let encounter;
+        if (encounterFhirId) {
+            encounter = await this.encounterRepo.findOne({
+                where: { fhirId: encounterFhirId, patient: { id: patient.id } },
             });
-
-            // Link encounter (optional)
-            const encounterId = med.encounter?.reference?.split('/')?.[1];
-            if (encounterId) {
-                const encounter = await this.encounterRepo.findOne({ where: { fhirId: encounterId } });
-                if (encounter) medication.encounter = encounter;
-            }
-
-            // Link practitioner (optional)
-            const practitionerId = med.requester?.reference?.split('/')?.[1];
-            if (practitionerId) {
-                const practitioner = await this.practitionerRepo.findOne({ where: { fhirId: practitionerId } });
-                if (practitioner) medication.practitioner = practitioner;
-            }
-
-            if (existing)
-                medication.id = existing.id
-
-            await this.medRepo.save(medication);
+            if (!encounter) throw new NotFoundException('Encounter not found or mismatched with patient');
         }
 
-        console.log('Medications saved successfully');
+        const allRequests: MedicationRequest[] = [];
+
+        for (const reqItem of requests) {
+            const medication = await this.medicationRepo.findOneBy({ fhirId: reqItem.medicationFhirId });
+            if (!medication) throw new NotFoundException('Medication not found');
+
+            const newRequest = this.medicationRequestRepo.create({
+                fhirId,
+                intent: reqItem.intent,
+                status: reqItem.status,
+                priority: reqItem.priority,
+                reason: reqItem.reason,
+                doseInstruction: reqItem.doseInstruction,
+                dosePeriod: reqItem.dosePeriod,
+                authoredOn: authoredOn ? new Date(authoredOn) : new Date(),
+                subject: patient,
+                encounter,
+                requester,
+                medication, // set medication here
+            });
+
+            allRequests.push(newRequest);
+        }
+
+        return this.medicationRequestRepo.save(allRequests);
     }
 }

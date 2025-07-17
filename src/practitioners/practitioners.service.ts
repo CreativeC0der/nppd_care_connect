@@ -90,7 +90,8 @@ export class PractitionersService {
 
                 return {
                     message: 'OTP Valid',
-                    data: { accessToken, existingUser }
+                    data: existingUser,
+                    accessToken
                 };
             }
             else

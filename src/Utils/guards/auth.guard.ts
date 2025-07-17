@@ -1,8 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, InternalServerErrorException, Request, UnauthorizedException } from "@nestjs/common";
+import { CanActivate, ExecutionContext, Injectable, InternalServerErrorException, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
 import { verify } from "crypto";
 import { Public } from "../decorators/public.decorator";
+import { Request } from "express";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -27,10 +28,10 @@ export class AuthGuard implements CanActivate {
 
     }
     async verifyToken(request: Request) {
+
         // Implement your token verification logic here
-        let [type, token] = request.headers['authorization']?.split(' ') ?? [];
-        token = type === 'Bearer' ? token : undefined;
-        if (!token) throw new UnauthorizedException('Authorization Header missing');
+        let token = request?.cookies?.['accessToken'];
+        if (!token) throw new UnauthorizedException('Unauthorized. Please login again. ');
 
         const payload = await this.jwtService.verifyAsync(token);
         request['user'] = payload;

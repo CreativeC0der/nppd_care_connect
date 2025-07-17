@@ -10,9 +10,10 @@ import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { MedicationRequest } from './entities/medication-request.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
+import { Medication } from './entities/medication.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MedicationRequest, Patient, Practitioner, Encounter]), PatientsModule, PractitionersModule, EncountersModule, HttpModule],
+  imports: [TypeOrmModule.forFeature([MedicationRequest, Patient, Practitioner, Encounter, Medication]), PatientsModule, PractitionersModule, EncountersModule, HttpModule],
   controllers: [MedicationsController],
   providers: [MedicationsService],
   exports: [MedicationsService]

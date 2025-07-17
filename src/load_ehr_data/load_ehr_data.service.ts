@@ -28,7 +28,7 @@ export class LoadEhrDataService {
         console.log('Conditions Loaded');
         await this.careplansService.fetchAndSaveCarePlans(patient.fhirId);
         console.log('Care Plans Loaded');
-        await this.medicationsService.fetchAndSaveMedications(patient.fhirId);
+        // await this.medicationsService.fetchAndSaveMedications(patient.fhirId);
         console.log('Medication Data Loaded');
         await this.observationsService.fetchAndSaveObservations(patient.fhirId);
         console.log('Observation Data Loaded');

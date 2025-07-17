@@ -104,38 +104,52 @@ export class ObservationsService {
         return this.observationRepo.save(observations);
     }
 
-    async createObservation(dto: CreateObservationDto, request: any): Promise<Observation> {
-        // check if patient fhir id matches the patient fhir id in request
-        if (request.user.role == Role.PATIENT && request.user.fhirId != dto.patientFhirId)
-            throw new UnauthorizedException(`You are not authorized to create observation for this patient`);
+    async createObservations(
+        dto: CreateObservationDto,
+        request: any,
+    ): Promise<Observation[]> {
+        const { subjectFhirId, encounterFhirId, issued, observations } = dto;
 
-        const { patientFhirId, encounterFhirId, ...observationData } = dto
-
-        const newObservation = this.observationRepo.create({
-            ...observationData
-        });
-
-        // Link patient
-        const patient = await this.patientRepo.findOneBy({ fhirId: patientFhirId });
-        if (!patient) throw new BadRequestException('Patient not found');
-
-        newObservation.patient = patient;
-
-        // Link encounter (optional)
-        if (encounterFhirId) {
-            const encounter = await this.encounterRepo.findOneBy({
-                fhirId: dto.encounterFhirId,
-                patient: {
-                    id: patient.id
-                }
-            });
-            if (!encounter)
-                throw new BadRequestException('Encounter not found');
-            newObservation.encounter = encounter;
+        // Restrict patient role to only their own observations
+        if (
+            request.user.role === Role.PATIENT &&
+            request.user.fhirId !== subjectFhirId
+        ) {
+            throw new UnauthorizedException(
+                'You are not authorized to create observations for this patient',
+            );
         }
 
-        return this.observationRepo.save(newObservation);
+        // Fetch and validate patient
+        const patient = await this.patientRepo.findOneBy({ fhirId: subjectFhirId });
+        if (!patient) throw new BadRequestException('Patient not found');
+
+        // Fetch and validate encounter if provided
+        let encounter: Encounter | null;
+        if (encounterFhirId) {
+            encounter = await this.encounterRepo.findOne({
+                where: {
+                    fhirId: encounterFhirId,
+                    patient: { id: patient.id },
+                },
+            });
+            if (!encounter) throw new BadRequestException('Encounter not found');
+        }
+
+        // Map each observation
+        const newObservations = observations.map((obsDto) =>
+            this.observationRepo.create({
+                ...obsDto,
+                issued,
+                patient,
+                encounter,
+            }),
+        );
+
+        // Save all observations at once
+        return this.observationRepo.save(newObservations);
     }
+
     async updateObservation(fhirId: string, updateDto: UpdateObservationDto, request: any): Promise<Observation> {
 
         const observation = await this.observationRepo.findOne({
@@ -153,20 +167,21 @@ export class ObservationsService {
         // Merge the existing observation with updateDto
         const updated = this.observationRepo.merge(observation, updateDto);
 
-        if (updateDto.encounterFhirId) {
-            const encounter = await this.encounterRepo.findOne({
-                where: {
-                    fhirId: updateDto.encounterFhirId,
-                    patient: {
-                        id: observation.patient.id
-                    }
-                }
-            });
-            if (!encounter) throw new BadRequestException('Invalid encounter ID');
-            updated.encounter = encounter;
-        }
-
         return this.observationRepo.save(updated);
     }
 
+    async getByEncounterFhirId(encounterFhirId: string): Promise<Observation[]> {
+        const encounter = await this.encounterRepo.findOne({
+            where: { fhirId: encounterFhirId },
+        });
+
+        if (!encounter) {
+            throw new NotFoundException('Encounter not found');
+        }
+
+        return this.observationRepo.find({
+            where: { encounter: { id: encounter.id } },
+            order: { effectiveDateTime: 'DESC' },
+        });
+    }
 }
