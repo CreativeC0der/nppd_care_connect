@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsEnum, IsOptional, IsString, IsArray } from "class-validator";
+import { IsEnum, IsOptional, IsString, IsArray, IsObject, IsJSON } from "class-validator";
 import { MedicationRequestIntent, MedicationRequestStatus, MedicationRequestPriority } from "../entities/medication-request.entity";
 
 export class MedicationRequestDto {
@@ -24,8 +24,9 @@ export class MedicationRequestDto {
 
     @ApiPropertyOptional({ example: 'Take 1 tablet every 6 hours' })
     @IsOptional()
-    @IsString()
-    doseInstruction?: string;
+    @IsJSON()
+    @Type(() => Object)
+    doseInstruction?: any;
 
     @ApiPropertyOptional({
         example: { start: '2025-06-01T00:00:00Z', end: '2025-06-10T00:00:00Z' },

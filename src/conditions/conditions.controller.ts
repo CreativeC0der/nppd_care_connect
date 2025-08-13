@@ -18,7 +18,7 @@ export class ConditionsController {
   @Post('create')
   @ApiOperation({ summary: 'Bulk create conditions' })
   @ApiResponse({ status: 201, type: ApiResponseDTO })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async bulkCreate(@Body() dto: CreateConditionDto): Promise<ApiResponseDTO> {
     try {
       const data = await this.conditionService.bulkCreate(dto);

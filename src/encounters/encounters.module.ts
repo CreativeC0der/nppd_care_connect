@@ -8,9 +8,10 @@ import { Encounter } from './entities/encounter.entity';
 import { PractitionersModule } from 'src/practitioners/practitioners.module';
 import { HttpModule } from '@nestjs/axios';
 import { Appointment } from 'src/appointments/entities/appointment.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Encounter, Practitioner, Patient, Appointment]), PractitionersModule, HttpModule],
+  imports: [TypeOrmModule.forFeature([Encounter, Practitioner, Patient, Appointment, Organization]), PractitionersModule, HttpModule],
   controllers: [EncountersController],
   providers: [EncountersService],
   exports: [EncountersService, TypeOrmModule]

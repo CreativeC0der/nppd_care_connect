@@ -7,9 +7,9 @@ import { Condition } from 'src/conditions/entities/condition.entity';
 @Entity('careplans')
 export class CarePlan {
     @PrimaryGeneratedColumn('uuid')
-    id: number;
+    id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({ nullable: true })
@@ -19,12 +19,12 @@ export class CarePlan {
     intent: string;
 
     @Column({ nullable: true })
-    category: string; // Typically from coding, e.g., "assess-plan", "mental-health"
+    category: string;
 
-    @Column({ type: 'date', nullable: true })
+    @Column({ name: 'startDate', type: 'date', nullable: true })
     startDate: Date | null;
 
-    @Column({ type: 'date', nullable: true })
+    @Column({ name: 'endDate', type: 'date', nullable: true })
     endDate: Date | null;
 
     @ManyToOne(() => Patient, { nullable: false, onDelete: 'CASCADE', cascade: true })
@@ -35,6 +35,7 @@ export class CarePlan {
     activities: CarePlanActivity[];
 
     @ManyToOne(() => Encounter, encounter => encounter.carePlans, { cascade: true, nullable: true })
+    @JoinColumn({ name: 'encounterId' })
     encounter: Encounter | null;
 
     @ManyToMany(() => Condition, condition => condition.carePlans, { cascade: true, nullable: true })

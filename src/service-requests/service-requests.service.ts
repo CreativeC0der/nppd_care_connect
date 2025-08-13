@@ -44,7 +44,7 @@ export class ServiceRequestsService {
       this.serviceRequestRepo.create({
         ...req,
         subject: patient,
-        encounter,
+        initiatedByEncounter: encounter,
         requester,
         authoredOn: dto.authoredOn,
       }),

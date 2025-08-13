@@ -12,6 +12,7 @@ import {
     Unique,
 } from 'typeorm';
 import { Medication } from './medication.entity';
+import { Condition } from 'src/conditions/entities/condition.entity';
 
 export enum MedicationRequestIntent {
     PROPOSAL = 'proposal',
@@ -49,7 +50,7 @@ export class MedicationRequest {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column()
+    @Column({ name: 'fhirId' })
     fhirId: string;
 
     @Column({
@@ -65,10 +66,7 @@ export class MedicationRequest {
     })
     status: MedicationRequestStatus;
 
-    @Column({ nullable: true })
-    reason: string;
-
-    @Column({ type: 'timestamp', nullable: true })
+    @Column({ name: 'authoredOn', type: 'timestamp', nullable: true })
     authoredOn: Date | null;
 
     @Column({
@@ -78,10 +76,10 @@ export class MedicationRequest {
     })
     priority: MedicationRequestPriority;
 
-    @Column({ type: 'text', nullable: true })
-    doseInstruction: string;
+    @Column({ name: 'doseInstruction', type: 'jsonb', nullable: true })
+    doseInstruction: any;
 
-    @Column({ type: 'jsonb', nullable: true })
+    @Column({ name: 'dosePeriod', type: 'jsonb', nullable: true })
     dosePeriod: { start: string; end: string };
 
     @ManyToOne(() => Patient, patient => patient.medications, { onDelete: 'SET NULL' })
@@ -99,4 +97,8 @@ export class MedicationRequest {
     @ManyToOne(() => Medication, { eager: true })
     @JoinColumn({ name: 'medication_id' })
     medication: Medication;
+
+    @ManyToOne(() => Condition, { nullable: true })
+    @JoinColumn({ name: 'condition_id' })
+    condition: Condition;
 }

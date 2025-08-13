@@ -19,7 +19,7 @@ export class MedicationsController {
   @Post('create')
   @ApiOperation({ summary: 'Create a medication' })
   @ApiCreatedResponse({ type: Medication })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async createMedication(@Body() dto: CreateMedicationDto): Promise<ApiResponseDTO> {
     try {
       const data = await this.medicationsService.create(dto);
@@ -40,7 +40,7 @@ export class MedicationsController {
   @Get('get-all')
   @ApiOperation({ summary: 'Get all medications' })
   @ApiOkResponse({ type: [Medication] })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async getAllMedications(): Promise<ApiResponseDTO> {
     try {
       const data = await this.medicationsService.findAll();
@@ -58,7 +58,7 @@ export class MedicationsController {
   @Post('create-request')
   @ApiOperation({ summary: 'Create bulk medication requests' })
   @ApiCreatedResponse({ type: ApiResponseDTO })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async createMedicationRequest(
     @Body() dto: CreateMedicationRequestDto,
   ): Promise<ApiResponseDTO> {

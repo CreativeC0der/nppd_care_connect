@@ -6,10 +6,13 @@ import {
     UpdateDateColumn,
     ManyToOne,
     JoinColumn,
+    Index,
 } from 'typeorm';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
+import { HealthcareService } from 'src/healthcare-services/entities/healthcare-service.entity';
+import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
 
 export enum ServiceRequestStatus {
     DRAFT = 'draft',
@@ -44,11 +47,12 @@ export enum ServiceRequestPriority {
 }
 
 @Entity('service_requests')
+@Index(['fhirId'], { unique: true })
 export class ServiceRequest {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true, nullable: false })
+    @Column({ name: 'fhirId', unique: true, nullable: false })
     fhirId: string;
 
     @Column({
@@ -75,8 +79,26 @@ export class ServiceRequest {
     })
     priority: ServiceRequestPriority;
 
-    @Column({ default: false })
+    @Column({ name: 'doNotPerform', default: false })
     doNotPerform: boolean;
+
+    @Column('timestamp', { array: true })
+    occurrence: Date[];
+
+    @Column({ nullable: true })
+    code: string;
+
+    @Column({ name: 'authoredOn', type: 'timestamp', nullable: true })
+    authoredOn: Date;
+
+    @Column({ type: 'text', nullable: true })
+    reason: string;
+
+    @CreateDateColumn({ name: 'createdAt' })
+    createdAt: Date;
+
+    @UpdateDateColumn({ name: 'updatedAt' })
+    updatedAt: Date;
 
     @ManyToOne(() => Patient, { eager: true })
     @JoinColumn({ name: 'subjectId' })
@@ -84,27 +106,17 @@ export class ServiceRequest {
 
     @ManyToOne(() => Encounter, { nullable: true, eager: true })
     @JoinColumn({ name: 'encounterId' })
-    encounter: Encounter;
-
-    @Column('timestamptz', { array: true })
-    occurrence: Date[];
-
-    @Column({ nullable: true })
-    code: string;
-
-    @Column({ type: 'timestamptz', nullable: true })
-    authoredOn: Date;
+    initiatedByEncounter: Encounter;
 
     @ManyToOne(() => Practitioner, { nullable: true, eager: true })
     @JoinColumn({ name: 'requesterId' })
     requester: Practitioner;
 
-    @Column({ type: 'text', nullable: true })
-    reason: string;
+    @ManyToOne(() => HealthcareService, { nullable: true })
+    @JoinColumn({ name: 'serviceType' })
+    serviceType: HealthcareService;
 
-    @CreateDateColumn()
-    createdAt: Date;
-
-    @UpdateDateColumn()
-    updatedAt: Date;
+    @ManyToOne(() => DiagnosticReport, diagnosticReport => diagnosticReport.basedOn, { cascade: true, nullable: true })
+    @JoinColumn({ name: 'diagnosticReportId' })
+    diagnosticReport: DiagnosticReport | null;
 }

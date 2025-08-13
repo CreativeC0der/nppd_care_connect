@@ -11,9 +11,13 @@ import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { MedicationRequest } from './entities/medication-request.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Medication } from './entities/medication.entity';
+import { Condition } from 'src/conditions/entities/condition.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MedicationRequest, Patient, Practitioner, Encounter, Medication]), PatientsModule, PractitionersModule, EncountersModule, HttpModule],
+  imports: [
+    TypeOrmModule.forFeature([MedicationRequest, Patient, Practitioner, Encounter, Medication, Condition]),
+    PatientsModule, PractitionersModule, EncountersModule, HttpModule
+  ],
   controllers: [MedicationsController],
   providers: [MedicationsService],
   exports: [MedicationsService]

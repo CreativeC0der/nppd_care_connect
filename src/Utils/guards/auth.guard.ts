@@ -1,14 +1,17 @@
 import { CanActivate, ExecutionContext, Injectable, InternalServerErrorException, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { JwtService } from "@nestjs/jwt";
-import { verify } from "crypto";
 import { Public } from "../decorators/public.decorator";
-import { Request } from "express";
+import { request, Request } from "express";
+import { AuthService } from "../../auth/auth.service";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
 
-    constructor(private jwtService: JwtService, private reflector: Reflector) { }
+    constructor(
+        private jwtService: JwtService,
+        private reflector: Reflector,
+    ) { }
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
         try {
@@ -23,10 +26,10 @@ export class AuthGuard implements CanActivate {
             console.error(err);
             if (err instanceof UnauthorizedException)
                 throw err
-            throw new InternalServerErrorException(err.message ?? 'Invalid JWT');
+            throw new InternalServerErrorException(err.message ?? 'Invalid authentication');
         }
-
     }
+
     async verifyToken(request: Request) {
 
         // Implement your token verification logic here

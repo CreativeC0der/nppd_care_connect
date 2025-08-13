@@ -4,23 +4,25 @@ import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Device } from 'src/devices/entities/device.entity';
 import { MedicationRequest } from 'src/medications/entities/medication-request.entity';
 import { Observation } from 'src/observations/entities/observation.entity';
+import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
+import { Procedure } from 'src/procedures/entities/procedure.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 
-@Entity()
+@Entity('patients')
 export class Patient {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
-    @Column()
+    @Column({ name: 'firstName' })
     firstName: string;
 
-    @Column()
+    @Column({ name: 'lastName' })
     lastName: string;
 
-    @Column({ type: 'date' })
+    @Column({ name: 'birthDate', type: 'date', nullable: true })
     birthDate: string;
 
     @Column()
@@ -38,7 +40,7 @@ export class Patient {
     @Column({ nullable: true })
     state: string;
 
-    @Column({ nullable: true })
+    @Column({ name: 'preferredLanguage', nullable: true })
     preferredLanguage: string;
 
     @Column({ default: true })
@@ -47,16 +49,19 @@ export class Patient {
     @Column({ default: false })
     deceased: boolean;
 
-    @Column({ type: 'date', nullable: true })
+    @Column({ name: 'dateOfDeath', type: 'date', nullable: true })
     dateOfDeath: string;
+
+    @Column({ nullable: true, unique: true })
+    firebaseUid: string;
 
     @CreateDateColumn()
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ name: 'updatedAt' })
     updatedAt: Date;
 
-    @OneToMany(() => Encounter, encounter => encounter.patient)
+    @OneToMany(() => Encounter, encounter => encounter.patient, { cascade: true })
     encounters: Encounter[];
 
     @OneToMany(() => CarePlan, carePlan => carePlan.patient)
@@ -70,4 +75,10 @@ export class Patient {
 
     @OneToMany(() => Observation, observation => observation.patient)
     observations: Observation[];
+
+    @OneToMany(() => DiagnosticReport, diagnosticReport => diagnosticReport.subject)
+    diagnosticReports: DiagnosticReport[];
+
+    @OneToMany(() => Procedure, procedure => procedure.subject)
+    procedures: Procedure[];
 }

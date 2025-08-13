@@ -1,38 +1,47 @@
-import { Patient } from 'src/patients/entities/patient.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Location } from 'src/locations/entities/location.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
+import { DeviceStatus, DeviceAvailabilityStatus } from 'src/Utils/enums/device.enum';
 
 @Entity('devices')
 export class Device {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
-    fhirId: string;
+    @Column({
+        type: 'enum',
+        enum: DeviceStatus,
+        default: DeviceStatus.ACTIVE
+    })
+    status: DeviceStatus;
 
-    @Column({ nullable: true })
-    status: string;
-
-    @Column({ nullable: true })
-    statusReason: string;
+    @Column({
+        type: 'enum',
+        enum: DeviceAvailabilityStatus,
+        default: DeviceAvailabilityStatus.AVAILABLE
+    })
+    availabilityStatus: DeviceAvailabilityStatus;
 
     @Column({ nullable: true })
     manufacturer: string;
 
-    @Column({ type: 'timestamp', nullable: true })
-    manufactureDate: Date;
-
-    @Column({ type: 'timestamp', nullable: true })
-    expirationDate: Date;
-
-    @Column({ nullable: true })
-    lotNumber: string;
-
-    @Column({ nullable: true })
+    @Column({ unique: true })
     serialNumber: string;
 
-    @Column({ nullable: true })
-    deviceName: string;
+    @Column()
+    name: string;
 
     @Column({ nullable: true })
-    display: string;
+    type: string;
+
+    @Column({ nullable: true })
+    category: string;
+
+    @ManyToOne(() => Location, { nullable: true })
+    @JoinColumn({ name: 'location_id' })
+    location: Location;
+
+    @ManyToOne(() => Organization, { nullable: true })
+    @JoinColumn({ name: 'owner_id' })
+    owner: Organization;
 }

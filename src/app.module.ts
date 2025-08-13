@@ -24,23 +24,29 @@ import { SchedulesModule } from './schedules/schedules.module';
 import { QuestionnaireModule } from './questionnaire/questionnaire.module';
 import { ServiceRequestsModule } from './service-requests/service-requests.module';
 import { PastMedicalRecordsModule } from './past-medical-records/past-medical-records.module';
+import { AuthModule } from './auth/auth.module';
+import { FirebaseConfig } from './Utils/config/firebase.config';
+import { HospitalModule } from './hospitals/hospital.module';
+import { OrganizationsModule } from './organizations/organizations.module';
+import { HealthcareServicesModule } from './healthcare-services/healthcare-services.module';
+import { LocationsModule } from './locations/locations.module';
+import { DiagnosticReportsModule } from './diagnostic-reports/diagnostic-reports.module';
+import { ProceduresModule } from './procedures/procedures.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       ignoreEnvFile: process.env.ENVIRONMENT === 'production',
-      envFilePath: '.env.development',
+      envFilePath: '.env.local',
       isGlobal: true
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT!, 10) || 5432,
-      username: process.env.DB_USERNAME || 'postgres',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_NAME || 'healthcare_db',
+      url: process.env.DATABASE_URL,
       autoLoadEntities: true,
       synchronize: true, // Set to false in production,
+      ssl: process.env.ENVIRONMENT === 'production' ? { rejectUnauthorized: false } : false
       // logging: true,
       // logger: 'advanced-console'
     }),
@@ -67,9 +73,17 @@ import { PastMedicalRecordsModule } from './past-medical-records/past-medical-re
     SchedulesModule,
     QuestionnaireModule,
     ServiceRequestsModule,
-    PastMedicalRecordsModule
+    PastMedicalRecordsModule,
+    AuthModule,
+    HospitalModule,
+    OrganizationsModule,
+    HealthcareServicesModule,
+    LocationsModule,
+    DiagnosticReportsModule,
+    ProceduresModule,
+    AdminModule
   ],
   controllers: [AppController, LoadEhrDataController],
-  providers: [AppService, LoadEhrDataService],
+  providers: [AppService, LoadEhrDataService, FirebaseConfig],
 })
 export class AppModule { }

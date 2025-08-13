@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Condition } from 'src/conditions/entities/condition.entity';
 import { MedicationRequest } from './entities/medication-request.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
@@ -24,6 +25,8 @@ export class MedicationsService {
         private readonly encounterRepo: Repository<Encounter>,
         @InjectRepository(Practitioner)
         private readonly practitionerRepo: Repository<Practitioner>,
+        @InjectRepository(Condition)
+        private readonly conditionRepo: Repository<Condition>,
     ) { }
 
     async create(dto: CreateMedicationDto): Promise<Medication> {
@@ -43,7 +46,7 @@ export class MedicationsService {
     }
 
     async createBulk(dto: CreateMedicationRequestDto) {
-        const { subjectFhirId, encounterFhirId, requesterFhirId, authoredOn, fhirId, requests } = dto;
+        const { subjectFhirId, encounterFhirId, requesterFhirId, authoredOn, fhirId, requests, conditionFhirId } = dto;
 
         const patient = await this.patientRepo.findOneBy({ fhirId: subjectFhirId });
         if (!patient) throw new NotFoundException('Patient not found');
@@ -59,6 +62,12 @@ export class MedicationsService {
             if (!encounter) throw new NotFoundException('Encounter not found or mismatched with patient');
         }
 
+        let condition;
+        if (conditionFhirId) {
+            condition = await this.conditionRepo.findOneBy({ fhirId: conditionFhirId });
+            if (!condition) throw new NotFoundException('Condition not found');
+        }
+
         const allRequests: MedicationRequest[] = [];
 
         for (const reqItem of requests) {
@@ -70,7 +79,7 @@ export class MedicationsService {
                 intent: reqItem.intent,
                 status: reqItem.status,
                 priority: reqItem.priority,
-                reason: reqItem.reason,
+                condition,
                 doseInstruction: reqItem.doseInstruction,
                 dosePeriod: reqItem.dosePeriod,
                 authoredOn: authoredOn ? new Date(authoredOn) : new Date(),

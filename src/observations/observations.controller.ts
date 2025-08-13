@@ -54,7 +54,7 @@ export class ObservationsController {
   @Get('get-by-encounter/:encounterFhirId')
   @ApiOperation({ summary: 'Get all observations by encounter FHIR ID' })
   @ApiOkResponse({ type: [Observation] })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async getByEncounter(
     @Param('encounterFhirId') encounterFhirId: string,
   ): Promise<ApiResponseDTO> {

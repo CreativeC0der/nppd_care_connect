@@ -1,14 +1,11 @@
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Practitioner } from './entities/practitioner.entity';
-import { Role } from 'src/Utils/enums/role.enum';
-import { LoginPractitionerDto } from './dto/login_practitioner.dto';
-import { JwtService } from '@nestjs/jwt';
-import { OtpService } from 'src/Utils/otp/otp.service';
 import { CreatePractitionerDto } from './dto/create_practitioner.dto';
+import { FirebaseConfig } from 'src/Utils/config/firebase.config';
 
 
 @Injectable()
@@ -19,8 +16,7 @@ export class PractitionersService {
         private readonly httpService: HttpService,
         @InjectRepository(Practitioner)
         private readonly practitionerRepo: Repository<Practitioner>,
-        private readonly otpService: OtpService,
-        private readonly jwtService: JwtService
+        private firebaseConfig: FirebaseConfig,
     ) { }
 
     async fetchAndSavePractitioner(practitionerId: string) {
@@ -38,8 +34,8 @@ export class PractitionersService {
 
         let newPractitioner = this.practitionerRepo.create({
             fhirId: pData.id,
-            givenName: given,
-            familyName: family,
+            firstName: given,
+            lastName: family,
             prefix,
             phone,
             email,
@@ -58,47 +54,6 @@ export class PractitionersService {
     }
 
 
-    async loginPractitioner(loginData: LoginPractitionerDto) {
-        // check for existing user
-        const existingUser = await this.practitionerRepo.findOne({
-            where: {
-                fhirId: loginData.fhirId
-            }
-        })
-        if (!existingUser)
-            throw new UnauthorizedException(`Practitioner Not Found`);
-
-        if (!loginData.otp) {
-            const name = `${existingUser.givenName} ${existingUser.familyName}`;
-            const email = existingUser.email;
-            // generate otp
-            const mailSent = await this.otpService.generateOtp(existingUser.email, name);
-            if (mailSent)
-                return {
-                    message: 'OTP Sent to Email',
-                    data: null
-                };
-            else
-                throw new InternalServerErrorException('Error Sending OTP')
-        }
-        else {
-            // validate otp
-            const otpValid = await this.otpService.validateOtp(existingUser.email, loginData.otp);
-            if (otpValid) {
-                const payload = { ...existingUser, role: Role.DOCTOR }
-                const accessToken = await this.jwtService.signAsync(payload);
-
-                return {
-                    message: 'OTP Valid',
-                    data: existingUser,
-                    accessToken
-                };
-            }
-            else
-                throw new UnauthorizedException('Invalid OTP')
-        }
-    }
-
     async createPractitioner(practitionerData: CreatePractitionerDto) {
         const existingPractitioner = await this.practitionerRepo.findOne({
             where: {
@@ -107,7 +62,16 @@ export class PractitionersService {
         });
         if (existingPractitioner)
             throw new BadRequestException('Practitioner Already Exists');
-        const newPractitioner = this.practitionerRepo.create({ ...practitionerData });
+        let firebaseUid: string | undefined = undefined;
+        if (practitionerData.firebaseToken) {
+            try {
+                const decoded = await this.firebaseConfig.getAuth().verifyIdToken(practitionerData.firebaseToken);
+                firebaseUid = decoded.uid;
+            } catch (e) {
+                throw new UnauthorizedException('Invalid Firebase token');
+            }
+        }
+        const newPractitioner = this.practitionerRepo.create({ ...practitionerData, firebaseUid });
         return this.practitionerRepo.save(newPractitioner)
     }
 }

@@ -13,12 +13,12 @@ export enum QuestionnaireStatus {
     UNKNOWN = 'unknown',
 }
 
-@Entity()
+@Entity('questionnaire')
 export class Questionnaire {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({
@@ -33,9 +33,9 @@ export class Questionnaire {
     @Column({ type: 'jsonb' })
     items: any; // FHIR Questionnaire.item[] structure
 
-    @CreateDateColumn()
+    @CreateDateColumn({ name: 'createdAt' })
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ name: 'updatedAt' })
     updatedAt: Date;
 }

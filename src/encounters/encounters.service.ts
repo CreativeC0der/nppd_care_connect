@@ -2,15 +2,15 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { HttpService } from '@nestjs/axios';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { firstValueFrom } from 'rxjs';
 
-import { Encounter } from './entities/encounter.entity';
+import { Encounter, EncounterStatus, EncounterClass } from './entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { PractitionersService } from 'src/practitioners/practitioners.service';
 import { CreateEncounterDto } from './dto/create_encounter.dto';
 import { Appointment } from 'src/appointments/entities/appointment.entity';
 import { UpdateEncounterDto } from './dto/update_encounter.dto';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Injectable()
 export class EncountersService {
@@ -24,55 +24,8 @@ export class EncountersService {
         @InjectRepository(Patient) private patientRepo: Repository<Patient>,
         @InjectRepository(Practitioner) private practitionerRepo: Repository<Practitioner>,
         @InjectRepository(Appointment) private appointmentRepo: Repository<Appointment>,
+        @InjectRepository(Organization) private organizationRepo: Repository<Organization>,
     ) { }
-
-    async fetchAndSaveEncounters(patientFhirId: string) {
-        const url = `${this.fhirBase}/Encounter?subject=Patient/${patientFhirId}`;
-        const response = await firstValueFrom(this.http.get(url));
-        const entries = response.data?.entry || [];
-
-        console.log('Encounters fetched')
-
-        const patient = await this.patientRepo.findOne({ where: { fhirId: patientFhirId } });
-        if (!patient) throw new Error('Patient not found');
-
-        for (const entry of entries) {
-            const resource = entry?.resource;
-            const existing = await this.encounterRepo.findOne({ where: { fhirId: resource.id } });
-
-            let encounter = this.encounterRepo.create({
-                fhirId: resource?.id || '',
-                status: resource?.status || '',
-                type: resource.type?.[0]?.text ?? null,
-                reason: resource.reasonCode?.[0]?.coding?.[0]?.display ?? null,
-                start: resource.period?.start ? new Date(resource.period.start) : null,
-                end: resource.period?.end ? new Date(resource.period.end) : null,
-                patient
-            });
-
-            // Get the practitioner references from the encounter
-            const practitionerIds: string[] = (resource.participant || [])
-                .map(participant => participant.individual?.reference?.split('/')[1])
-                .filter(Boolean);
-
-            const practitioners: Practitioner[] = [];
-
-            for (const practitionerId of practitionerIds) {
-                const practitioner = await this.practitionerService.fetchAndSavePractitioner(practitionerId);
-                practitioners.push(practitioner);
-            }
-
-            encounter.practitioners = practitioners;
-
-            // Save the encounter
-            if (existing)
-                encounter.id = existing.id
-
-            await this.encounterRepo.save(encounter);
-        }
-
-        console.log('Encounters and practitioners saved');
-    }
 
     async createEncounter(dto: CreateEncounterDto, request: any): Promise<Encounter> {
         const { patientFhirId, practitionerFhirIds, appointmentFhirId, ...encounterDto } = dto;
@@ -109,7 +62,7 @@ export class EncountersService {
         return this.encounterRepo.save(encounter);
     }
 
-    async getByPatientFhirId(patientFhirId: string): Promise<Encounter[]> {
+    async getByPatientFhirId(patientFhirId: string, organizationFhirId: string): Promise<Encounter[]> {
         const patient = await this.patientRepo.findOne({
             where: { fhirId: patientFhirId },
         });
@@ -118,19 +71,33 @@ export class EncountersService {
             throw new NotFoundException('Patient not found');
         }
 
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
         return this.encounterRepo.find({
-            where: { patient: { id: patient.id } },
+            where: {
+                patient: { id: patient.id },
+                serviceProvider: {
+                    managingOrganization: {
+                        id: organization.id
+                    }
+                }
+            },
             relations: [
-                'patient',
                 'practitioners',
-                'carePlans',
                 'conditions',
                 'medications',
-                'observations',
-                'appointment',
-                'medicalRecords',
+                'medications.medication',
+                'procedures',
+                'diagnosticReports',
+                'diagnosticReports.results',
             ],
-            order: { start: 'DESC' }, // Optional: if you want latest first
+            order: { start: 'DESC' },
         });
     }
 
@@ -146,32 +113,228 @@ export class EncountersService {
         return this.encounterRepo.save(updatedEncounter);
     }
 
-    // async cancelEncounterByFhirId(fhirId: string, dto: CancelEncounterDto, user: { role: string; fhirId: string },) {
-    //     const encounter = await this.encounterRepo.findOne({
-    //         where: { fhirId },
-    //         relations: ['patient'],
-    //     });
+    async getEncountersByOrganization(organizationFhirId: string): Promise<Encounter[]> {
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
 
-    //     // Check if encounter exists
-    //     if (!encounter)
-    //         throw new NotFoundException('Encounter not found');
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
 
-    //     // Only the owner patient or an admin can cancel
-    //     if (user.role === Role.PATIENT && encounter.patient.fhirId !== user.fhirId)
-    //         throw new ForbiddenException('You cannot cancel another patient encounter');
+        const encounters = await this.encounterRepo.find({
+            where: {
+                serviceProvider: {
+                    managingOrganization: {
+                        id: organization.id
+                    }
+                }
+            },
+            order: { start: 'DESC' },
+        });
 
-    //     // Error if encounter is already cancelled
-    //     if (encounter.status === 'cancelled')
-    //         throw new BadRequestException('Encounter is already cancelled');
+        return encounters;
+    }
 
-    //     // Update status
-    //     encounter.status = 'cancelled';
+    async getEncountersGroupedByClass(organizationFhirId: string) {
+        // Use TypeORM's query builder to get grouped data
+        const result = await this.encounterRepo
+            .createQueryBuilder('encounter')
+            .select('encounter.class', 'class')
+            .addSelect('COUNT(encounter.id)', 'count')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
+            .groupBy('encounter.class')
+            .where('managingOrganization.fhirId = :organizationFhirId', { organizationFhirId })
+            .getRawMany();
 
-    //     // Optionally store cancellation reason
-    //     if (dto.reason)
-    //         encounter.reason = `CANCELLED: ${dto.reason}`;
+        // Transform the result to match the expected format
+        return result.map(item => ({
+            class: item.class || 'UNKNOWN',
+            count: parseInt(item.count)
+        }));
+    }
 
-    //     return this.encounterRepo.save(encounter);
-    // }
+    async getEncountersGroupedByType(organizationFhirId: string) {
+        // Use TypeORM's query builder to get grouped data by 'type'
+        const result = await this.encounterRepo
+            .createQueryBuilder('encounter')
+            .select('encounter.type', 'type')
+            .addSelect('COUNT(encounter.id)', 'count')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
+            .groupBy('encounter.type')
+            .where('managingOrganization.fhirId = :organizationFhirId', { organizationFhirId })
+            .getRawMany();
+
+        // Transform the result to match the expected format
+        return result.map(item => ({
+            type: item.type || 'UNKNOWN',
+            count: parseInt(item.count)
+        }));
+    }
+
+    async getPractitionersWithEncounterCounts(organizationFhirId: string) {
+        // First validate that the organization exists
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        // Execute the query to get practitioners with encounter counts
+        const encounterCounts = await this.encounterRepo
+            .createQueryBuilder('encounter')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
+            .innerJoin('encounter.practitioners', 'practitioner')
+            .select('practitioner.fhirId', 'practitionerFhirId')
+            .addSelect('COUNT(encounter.id)', 'encounterCount')
+            .where('managingOrganization.fhirId = :fhirId', { fhirId: organizationFhirId })
+            .groupBy('practitioner.fhirId')
+            .orderBy('"encounterCount"', 'DESC')
+            .getRawMany();
+
+        // Transform the result to include practitioner details
+        const practitionersWithCounts = await Promise.all(
+            encounterCounts.map(async (item) => {
+                const practitioner = await this.practitionerRepo.findOne({
+                    where: { fhirId: item.practitionerFhirId }
+                });
+
+                return {
+                    practitionerFhirId: item.practitionerFhirId,
+                    encounterCount: parseInt(item.encounterCount),
+                    practitioner: practitioner || null
+                };
+            })
+        );
+
+        return practitionersWithCounts;
+    }
+
+    async getAverageLengthOfStay(organizationFhirId: string) {
+        // First validate that the organization exists
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        // Get all discharged inpatient encounters for the organization
+        const result = await this.encounterRepo
+            .createQueryBuilder('encounter')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
+            .where('managingOrganization.fhirId = :organizationFhirId', { organizationFhirId })
+            .andWhere('encounter.status = :status', { status: EncounterStatus.DISCHARGED })
+            .andWhere('encounter.class = :class', { class: EncounterClass.INPATIENT })
+            .andWhere('encounter.start IS NOT NULL')
+            .andWhere('encounter.end IS NOT NULL')
+            .andWhere('encounter.end > encounter.start')
+            .select('AVG(EXTRACT(EPOCH FROM (encounter.end - encounter.start)) / 86400)', 'averageLengthOfStay')
+            .addSelect('COUNT(encounter.id)', 'totalEncounters')
+            .getRawOne();
+
+        if (!result || result.totalEncounters === '0') {
+            return {
+                averageLengthOfStay: 0,
+                totalEncounters: 0,
+                unit: 'days'
+            };
+        }
+
+        return {
+            averageLengthOfStay: Math.round(parseFloat(result.averageLengthOfStay) * 100) / 100,
+            totalEncounters: parseInt(result.totalEncounters),
+            unit: 'days'
+        };
+    }
+
+    async getYearwiseEncounterClassCounts(organizationFhirId: string): Promise<any[]> {
+        // First validate that the organization exists
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        await this.encounterRepo.query(`CREATE EXTENSION IF NOT EXISTS tablefunc;`);
+
+        const classQuery = `SELECT DISTINCT class FROM encounters ORDER BY class`;
+
+        const classes = await this.encounterRepo.query(classQuery);
+
+        const columnDefs = classes
+            .map(c => `"${c.class}" int`)
+            .join(', ');
+
+        // Build COALESCE expressions for each class column
+        const coalesceColumns = classes
+            .map(c => `COALESCE("${c.class}", 0) AS "${EncounterClass[c.class]}"`)
+            .join(', ');
+
+        const query = `
+                        SELECT year, ${coalesceColumns}
+                        FROM crosstab(
+                            $$ 
+                                SELECT
+                                    EXTRACT(YEAR FROM "start")::int AS year,
+                                    class,
+                                    COUNT(*) AS cnt
+                                FROM encounters
+                                INNER JOIN organization AS "serviceProvider" ON encounters."serviceProvider" = "serviceProvider".id
+                                WHERE "serviceProvider"."managing_organization" = '${organization.id}'
+                                GROUP BY year, class 
+                                ORDER BY year, class
+                            $$,
+                            $$ 
+                                ${classQuery} 
+                            $$
+                        ) AS pivot_table(
+                            "year" int,
+                            ${columnDefs}
+                        );`
+
+        // Execute the query to get yearwise encounter class counts
+        const result = await this.encounterRepo.query(query);
+        return result;
+
+    }
+
+    async getServiceProviderLoadPercentage(organizationFhirId: string): Promise<any[]> {
+        // First validate that the organization exists
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        // Get encounter counts grouped by serviceProvider
+        const result = await this.encounterRepo
+            .createQueryBuilder('encounter')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .select('serviceProvider.name', 'department')
+            .addSelect('COUNT(encounter.id)', 'count')
+            .where('serviceProvider.managingOrganization = :organizationId', { organizationId: organization.id })
+            .groupBy('serviceProvider.name')
+            .orderBy('count', 'DESC')
+            .getRawMany();
+
+        // Calculate load percentage based on max count of 20
+        const maxCount = 20;
+        return result.map(item => ({
+            department: item.department || 'Unknown',
+            load: Math.round((parseInt(item.count) / maxCount) * 100)
+        }));
+    }
 }
 

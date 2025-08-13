@@ -39,6 +39,27 @@ export class SchedulesService {
 
     }
 
+    async getSchedulesByPractitioner(practitionerFhirId: string): Promise<Schedule[]> {
+        // First check if practitioner exists
+        const practitioner = await this.practitionerRepo.findOne({
+            where: { fhirId: practitionerFhirId },
+        });
+
+        if (!practitioner) {
+            throw new NotFoundException('Practitioner not found');
+        }
+
+        return this.scheduleRepo.find({
+            where: {
+                actor: { id: practitioner.id },
+            },
+            relations: ['slots'],
+            order: {
+                planningHorizonStart: 'ASC',
+            },
+        });
+    }
+
     async createSchedule(dto: CreateScheduleDto) {
         const practitioner = await this.practitionerRepo.findOne({
             where: { fhirId: dto.practitionerFhirId },

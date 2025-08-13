@@ -16,16 +16,16 @@ export class Schedule {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({ default: true })
     active: boolean;
 
-    @Column({ nullable: true })
+    @Column({ name: 'serviceCategory', nullable: true })
     serviceCategory: string;
 
-    @Column({ nullable: true })
+    @Column({ name: 'serviceType', nullable: true })
     serviceType: string;
 
     @Column({ nullable: true })
@@ -34,10 +34,10 @@ export class Schedule {
     @Column({ nullable: true })
     name: string;
 
-    @Column({ type: 'timestamptz', nullable: true })
+    @Column({ name: 'planningHorizonStart', type: 'timestamp', nullable: true })
     planningHorizonStart: Date;
 
-    @Column({ type: 'timestamptz', nullable: true })
+    @Column({ name: 'planningHorizonEnd', type: 'timestamp', nullable: true })
     planningHorizonEnd: Date;
 
     @Column({ type: 'text', nullable: true })
@@ -45,7 +45,6 @@ export class Schedule {
 
     @ManyToOne(() => Practitioner, (practitioner) => practitioner.schedules, {
         onDelete: 'SET NULL',
-        eager: true
     })
     @JoinColumn({ name: 'practitionerId' })
     actor: Practitioner;

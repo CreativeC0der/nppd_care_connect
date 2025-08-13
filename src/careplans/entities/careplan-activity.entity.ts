@@ -6,11 +6,11 @@ export class CarePlanActivity {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ type: 'text', nullable: true })
-    detailText: string; // Text instruction, e.g. "Take medication twice daily"
+    @Column({ name: 'detailText', type: 'text', nullable: true })
+    detailText: string;
 
     @Column({ nullable: true })
-    status: string; // "scheduled", "in-progress", etc.
+    status: string;
 
     @ManyToOne(() => CarePlan, carePlan => carePlan.activities, { nullable: false, cascade: true, orphanedRowAction: 'delete' })
     @JoinColumn({ name: 'careplan_id' })

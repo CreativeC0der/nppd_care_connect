@@ -6,7 +6,8 @@ import {
     Column,
     CreateDateColumn,
     UpdateDateColumn,
-    ManyToOne
+    ManyToOne,
+    JoinColumn
 } from 'typeorm';
 
 export enum MedicalRecordType {
@@ -24,7 +25,7 @@ export class MedicalRecord {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column()
@@ -48,12 +49,13 @@ export class MedicalRecord {
     @Column({ type: 'jsonb', nullable: true })
     data: any;
 
-    @ManyToOne(() => Encounter, { onDelete: 'CASCADE' })
-    encounter: Encounter;
-
-    @CreateDateColumn()
+    @CreateDateColumn({ name: 'createdAt' })
     createdAt: Date;
 
-    @UpdateDateColumn()
+    @UpdateDateColumn({ name: 'updatedAt' })
     updatedAt: Date;
+
+    @ManyToOne(() => Encounter, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'encounterId' })
+    encounter: Encounter;
 }

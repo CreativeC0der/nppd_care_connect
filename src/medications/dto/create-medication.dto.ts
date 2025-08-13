@@ -1,6 +1,7 @@
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, ValidateNested, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { MedicationStatus, MedicationDoseForm } from '../entities/medication.entity';
 
 class MedicationIngredientDto {
     @ApiProperty({ example: 'Paracetamol' })
@@ -22,15 +23,15 @@ export class CreateMedicationDto {
     @IsString()
     code?: string;
 
-    @ApiPropertyOptional({ enum: ['active', 'inactive', 'entered-in-error'] })
+    @ApiPropertyOptional({ enum: MedicationStatus })
     @IsOptional()
-    @IsEnum(['active', 'inactive', 'entered-in-error'])
-    status?: 'active' | 'inactive' | 'entered-in-error';
+    @IsEnum(MedicationStatus)
+    status?: MedicationStatus;
 
-    @ApiPropertyOptional({ enum: ['powder', 'tablets', 'capsule'] })
+    @ApiPropertyOptional({ enum: MedicationDoseForm })
     @IsOptional()
-    @IsEnum(['powder', 'tablets', 'capsule'])
-    doseForm?: 'powder' | 'tablets' | 'capsule';
+    @IsEnum(MedicationDoseForm)
+    doseForm?: MedicationDoseForm;
 
     @ApiPropertyOptional({ example: 100 })
     @IsOptional()

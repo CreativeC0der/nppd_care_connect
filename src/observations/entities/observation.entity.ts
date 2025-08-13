@@ -6,7 +6,9 @@ import {
     Column,
     ManyToOne,
     Index,
+    JoinColumn,
 } from 'typeorm';
+import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
 
 export enum ObservationCategory {
     SOCIAL_HISTORY = 'social-history',
@@ -36,25 +38,27 @@ export class Observation {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column()
+    @Column({ name: 'fhirId' })
     fhirId: string;
 
     @Column({
         type: 'enum',
         enum: ObservationStatus,
+        nullable: true,
     })
     status: ObservationStatus;
 
     @Column({
         type: 'enum',
         enum: ObservationCategory,
+        nullable: true,
     })
     category: ObservationCategory;
 
     @Column()
     code: string;
 
-    @Column({ type: 'timestamp', nullable: true })
+    @Column({ name: 'effectiveDateTime', type: 'timestamp', nullable: true })
     effectiveDateTime: Date;
 
     @Column({ type: 'timestamp', nullable: true })
@@ -68,8 +72,14 @@ export class Observation {
 
     // Relations
     @ManyToOne(() => Patient, patient => patient.observations, { cascade: true })
+    @JoinColumn({ name: 'patientId' })
     patient: Patient;
 
     @ManyToOne(() => Encounter, encounter => encounter.observations, { cascade: true, nullable: true })
+    @JoinColumn({ name: 'encounterId' })
     encounter: Encounter | null;
+
+    @ManyToOne(() => DiagnosticReport, diagnosticReport => diagnosticReport.results, { cascade: true, nullable: true })
+    @JoinColumn({ name: 'diagnosticReportId' })
+    diagnosticReport: DiagnosticReport | null;
 }

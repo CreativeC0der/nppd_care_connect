@@ -6,6 +6,8 @@ import { Observation } from 'src/observations/entities/observation.entity';
 import { MedicalRecord } from 'src/past-medical-records/entities/past-medical-record.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
+import { Procedure } from 'src/procedures/entities/procedure.entity';
 import {
     Entity,
     PrimaryGeneratedColumn,
@@ -17,6 +19,10 @@ import {
     OneToMany,
     OneToOne,
 } from 'typeorm';
+import { Location } from 'src/locations/entities/location.entity';
+import { HealthcareService } from 'src/healthcare-services/entities/healthcare-service.entity';
+import { ServiceRequest } from 'src/service-requests/entities/service-request.entity';
+import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
 
 export enum EncounterStatus {
     PLANNED = 'planned',
@@ -30,13 +36,21 @@ export enum EncounterStatus {
     UNKNOWN = 'unknown',
 }
 
+export enum EncounterClass {
+    INPATIENT = 'IMP' as any,
+    AMBULATORY = 'AMB' as any,
+    OBSERVATION = 'OBSENC' as any,
+    EMERGENCY = 'EMER' as any,
+    VIRTUAL = 'VR' as any,
+    HOME = 'HH' as any,
+}
 
 @Entity('encounters')
 export class Encounter {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({
@@ -47,7 +61,7 @@ export class Encounter {
     status: EncounterStatus;
 
     @Column({ nullable: true })
-    type: string;// Specific type of encounter (e.g. e-mail consultation, surgical day-care, ...)
+    type: string;
 
     @Column({ nullable: true })
     reason: string;
@@ -62,9 +76,35 @@ export class Encounter {
     @JoinColumn({ name: 'patient_id' })
     patient: Patient;
 
-    @ManyToMany(() => Practitioner, practitioner => practitioner.encounters, {
-        cascade: true,
+    @OneToOne(() => Appointment)
+    @JoinColumn({ name: 'appointmentId' })
+    appointment: Appointment;
+
+    @Column({
+        name: 'class',
+        type: 'enum',
+        enum: EncounterClass,
+        nullable: true
     })
+    class: EncounterClass;
+
+    @ManyToOne(() => HealthcareService, { nullable: true })
+    @JoinColumn({ name: 'serviceType' })
+    serviceType: HealthcareService;
+
+    @ManyToOne(() => Encounter, { nullable: true })
+    @JoinColumn({ name: 'partOf' })
+    partOf: Encounter;
+
+    @ManyToOne(() => Location, { nullable: true })
+    @JoinColumn({ name: 'location' })
+    location: Location;
+
+    @ManyToOne(() => Organization, { nullable: true })
+    @JoinColumn({ name: 'serviceProvider' })
+    serviceProvider: Organization;
+
+    @ManyToMany(() => Practitioner, practitioner => practitioner.encounters)
     @JoinTable({
         name: 'encounter_practitioners',
         joinColumn: { name: 'encounter_id', referencedColumnName: 'id' },
@@ -84,10 +124,23 @@ export class Encounter {
     @OneToMany(() => Observation, observation => observation.encounter)
     observations: Observation[];
 
-    @OneToOne(() => Appointment)
-    @JoinColumn()
-    appointment: Appointment;
-
     @OneToMany(() => MedicalRecord, medicalRecord => medicalRecord.encounter)
     medicalRecords: MedicalRecord[];
+
+    @OneToMany(() => ServiceRequest, serviceRequest => serviceRequest.initiatedByEncounter)
+    generatedServiceRequests: ServiceRequest[];
+
+    @ManyToMany(() => ServiceRequest, { cascade: true, onDelete: 'CASCADE' })
+    @JoinTable({
+        name: 'encounter_based_on',
+        joinColumn: { name: 'encounter_id', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'service_request_id', referencedColumnName: 'id' },
+    })
+    basedOnServiceRequests: ServiceRequest[];
+
+    @OneToMany(() => DiagnosticReport, diagnosticReport => diagnosticReport.encounter)
+    diagnosticReports: DiagnosticReport[];
+
+    @OneToMany(() => Procedure, procedure => procedure.encounter)
+    procedures: Procedure[];
 }

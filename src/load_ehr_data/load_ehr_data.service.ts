@@ -20,20 +20,20 @@ export class LoadEhrDataService {
     ) { }
 
     async load(patientFhirId?: string) {
-        const patient = await this.patientService.fetchAndStorePatient(patientFhirId);
-        console.log('Patient Data Loaded');
-        await this.encountersService.fetchAndSaveEncounters(patient.fhirId);
-        console.log('Practitioner and Encounter Data Loaded')
-        await this.conditionsService.fetchAndSaveConditions(patient.fhirId);
-        console.log('Conditions Loaded');
-        await this.careplansService.fetchAndSaveCarePlans(patient.fhirId);
-        console.log('Care Plans Loaded');
-        // await this.medicationsService.fetchAndSaveMedications(patient.fhirId);
-        console.log('Medication Data Loaded');
-        await this.observationsService.fetchAndSaveObservations(patient.fhirId);
-        console.log('Observation Data Loaded');
+        // const patient = await this.patientService.fetchAndStorePatient(patientFhirId);
+        // console.log('Patient Data Loaded');
+        // await this.encountersService.fetchAndSaveEncounters(patient.fhirId);
+        // console.log('Practitioner and Encounter Data Loaded')
+        // await this.conditionsService.fetchAndSaveConditions(patient.fhirId);
+        // console.log('Conditions Loaded');
+        // await this.careplansService.fetchAndSaveCarePlans(patient.fhirId);
+        // console.log('Care Plans Loaded');
+        // // await this.medicationsService.fetchAndSaveMedications(patient.fhirId);
+        // console.log('Medication Data Loaded');
+        // await this.observationsService.fetchAndSaveObservations(patient.fhirId);
+        // console.log('Observation Data Loaded');
 
-        return new ApiResponseDTO({ message: 'Data Loaded Successfully', statusCode: HttpStatus.OK, data: patient });
+        // return new ApiResponseDTO({ message: 'Data Loaded Successfully', statusCode: HttpStatus.OK, data: patient });
     }
 
 }

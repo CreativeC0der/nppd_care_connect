@@ -14,3 +14,13 @@ export class GetSchedulesDto {
     @IsString()
     specialty: string;
 }
+
+export class GetSchedulesByPractitionerDto {
+    @ApiProperty({
+        description: 'Practitioner FHIR ID',
+        example: 'practitioner-123',
+        type: String
+    })
+    @IsString()
+    practitionerFhirId: string;
+}

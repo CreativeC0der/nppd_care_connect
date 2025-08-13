@@ -21,12 +21,12 @@ export enum QuestionnaireResponseStatus {
     STOPPED = 'stopped',
 }
 
-@Entity()
+@Entity('questionnaire_response')
 export class QuestionnaireResponse {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({
@@ -35,7 +35,7 @@ export class QuestionnaireResponse {
     })
     status: QuestionnaireResponseStatus;
 
-    @Column({ type: 'timestamp with time zone', nullable: true })
+    @Column({ type: 'timestamp', nullable: true })
     authored: Date;
 
     @Column({ type: 'jsonb', nullable: true })

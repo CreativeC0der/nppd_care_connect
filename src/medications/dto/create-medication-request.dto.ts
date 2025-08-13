@@ -35,4 +35,9 @@ export class CreateMedicationRequestDto {
     @IsOptional()
     @IsDateString()
     authoredOn?: string;
+
+    @ApiPropertyOptional({ example: 'condition-fhir-id', description: 'Condition FHIR ID' })
+    @IsOptional()
+    @IsString()
+    conditionFhirId?: string;
 }

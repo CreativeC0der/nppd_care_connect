@@ -16,7 +16,7 @@ export class Slot {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({
@@ -26,10 +26,10 @@ export class Slot {
     })
     status: SlotStatus;
 
-    @Column({ type: 'timestamptz' })
+    @Column({ type: 'timestamp' })
     start: Date;
 
-    @Column({ type: 'timestamptz' })
+    @Column({ type: 'timestamp' })
     end: Date;
 
     @Column({ type: 'text', nullable: true })

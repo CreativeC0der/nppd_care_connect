@@ -59,4 +59,9 @@ export class CreatePatientDto {
     @IsOptional()
     @IsDateString()
     dateOfDeath?: string;
+
+    @ApiProperty({ example: 'firebase_id_token', description: 'Firebase ID token', required: false })
+    @IsOptional()
+    @IsString()
+    firebaseToken?: string;
 }

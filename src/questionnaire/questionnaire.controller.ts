@@ -26,7 +26,7 @@ export class QuestionnaireController {
     description: 'Questionnaire created successfully',
     type: Questionnaire,
   })
-  @Roles([Role.STAFF, Role.DOCTOR])
+  @Roles([Role.ADMIN, Role.DOCTOR])
   async create(@Body() dto: CreateQuestionnaireDto): Promise<ApiResponseDTO> {
     const payload = await this.questionnaireService.createQuestionnaire(dto);
     return new ApiResponseDTO({ message: 'Questionnaire Created Successfully', statusCode: HttpStatus.CREATED, data: payload });
@@ -35,7 +35,7 @@ export class QuestionnaireController {
   @Post('create-response')
   @ApiOperation({ summary: 'Create a questionnaire response' })
   @ApiResponse({ status: 201, description: 'Questionnaire response created successfully.' })
-  @Roles([Role.STAFF, Role.DOCTOR])
+  @Roles([Role.ADMIN, Role.DOCTOR])
   async createQuestionnaireResponse(
     @Body() dto: CreateQuestionnaireResponseDto,
   ) {
@@ -44,7 +44,7 @@ export class QuestionnaireController {
 
 
   @Get('get-all')
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   @ApiOperation({ summary: 'Get all questionnaires' })
   async getAll() {
     const payload = await this.questionnaireService.getAll();

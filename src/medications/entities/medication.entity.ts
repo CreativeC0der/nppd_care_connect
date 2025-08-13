@@ -1,42 +1,60 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 'typeorm';
 import { MedicationRequest } from './medication-request.entity';
 
+export enum MedicationStatus {
+    ACTIVE = 'active',
+    INACTIVE = 'inactive',
+    ENTERED_IN_ERROR = 'entered-in-error',
+}
+
+export enum MedicationDoseForm {
+    POWDER = 'powder',
+    TABLETS = 'tablets',
+    CAPSULE = 'capsule',
+}
+
 @Entity('medications')
 export class Medication {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
-    // CodeableConcept: code (e.g., medication name)
     @Column({ nullable: true })
     code: string;
 
-    // Status (active | inactive | entered-in-error)
-    @Column({ type: 'enum', enum: ['active', 'inactive', 'entered-in-error'], nullable: true })
-    status: 'active' | 'inactive' | 'entered-in-error';
+    @Column({ name: 'definition', nullable: true })
+    definition: string;
 
-    // Dose form
-    @Column({ type: 'enum', enum: ['powder', 'tablets', 'capsule'], nullable: true })
-    doseForm: 'powder' | 'tablets' | 'capsule'
+    @Column({
+        type: 'enum',
+        enum: MedicationStatus,
+        nullable: true
+    })
+    status: MedicationStatus;
 
-    // Total volume
-    @Column({ type: 'float', nullable: true })
+    @Column({
+        name: 'doseForm',
+        type: 'enum',
+        enum: MedicationDoseForm,
+        nullable: true
+    })
+    doseForm: MedicationDoseForm;
+
+    @Column({ name: 'totalVolumeValue', type: 'double precision', nullable: true })
     totalVolumeValue: number;
 
-    @Column({ nullable: true })
+    @Column({ name: 'totalVolumeUnit', nullable: true })
     totalVolumeUnit: string;
 
-    // Ingredient (single, simplified — can normalize later)
     @Column({ type: 'jsonb', nullable: true })
     ingredient: { item: string, value: string }[];
 
-    // Batch info
-    @Column({ nullable: true })
+    @Column({ name: 'batchLotNumber', nullable: true })
     batchLotNumber: string;
 
-    @Column({ type: 'timestamp', nullable: true })
+    @Column({ name: 'batchExpirationDate', type: 'timestamp', nullable: true })
     batchExpirationDate: Date;
 
     @OneToMany(() => MedicationRequest, (mr) => mr.medication)

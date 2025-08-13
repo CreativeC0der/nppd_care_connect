@@ -8,24 +8,24 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 't
 @Entity('practitioners')
 export class Practitioner {
     @PrimaryGeneratedColumn('uuid')
-    id: number;
+    id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({ nullable: true })
     prefix: string;
 
-    @Column()
-    givenName: string;
+    @Column({ name: 'firstName', nullable: true })
+    firstName: string;
 
-    @Column({ nullable: true })
-    familyName: string;
+    @Column({ name: 'lastName', nullable: true })
+    lastName: string;
 
     @Column({ nullable: true })
     gender: string;
 
-    @Column({ type: 'date', nullable: true })
+    @Column({ name: 'birthDate', type: 'date', nullable: true })
     birthDate: Date;
 
     @Column({ nullable: true })
@@ -39,6 +39,9 @@ export class Practitioner {
 
     @Column({ default: true })
     active: boolean;
+
+    @Column({ nullable: true, unique: true })
+    firebaseUid: string;
 
     @ManyToMany(() => Encounter, encounter => encounter.practitioners)
     encounters: Encounter[];

@@ -1,14 +1,12 @@
-import { BadRequestException, Body, ConflictException, Controller, ForbiddenException, Get, HttpCode, HttpException, HttpStatus, InternalServerErrorException, NotFoundException, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Get, HttpStatus, InternalServerErrorException, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { EncountersService } from './encounters.service';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 import { CreateEncounterDto } from './dto/create_encounter.dto';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
 import { Role } from 'src/Utils/enums/role.enum';
 import { Roles } from 'src/Utils/decorators/roles.decorator';
-import { CancelEncounterDto } from './dto/cancel_encounter.dto';
-import { Encounter } from './entities/encounter.entity';
 import { UpdateEncounterDto } from './dto/update_encounter.dto';
 
 @Controller('encounters')
@@ -18,7 +16,7 @@ export class EncountersController {
   constructor(private readonly encountersService: EncountersService) { }
 
   @Post('create')
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   @ApiOperation({ summary: 'Create a new encounter if all practitioners are available' })
   @ApiResponse({ status: 201, description: 'Encounter scheduled successfully', type: ApiResponseDTO })
   async create(@Body() createEncounterDto: CreateEncounterDto, @Req() request: any) {
@@ -37,14 +35,17 @@ export class EncountersController {
     }
   }
 
-  @Get('get-by-patient/:patientFhirId')
+  @Get('get-by-patient')
   @ApiOperation({ summary: 'Get all encounters by patient FHIR ID' })
   @ApiOkResponse({ type: ApiResponseDTO })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @ApiQuery({ name: 'patientFhirId', type: String })
+  @ApiQuery({ name: 'organizationFhirId', type: String })
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async getByPatientFhirId(
-    @Param('patientFhirId') patientFhirId: string,
+    @Query('patientFhirId') patientFhirId: string,
+    @Query('organizationFhirId') organizationFhirId: string,
   ): Promise<ApiResponseDTO> {
-    const data = await this.encountersService.getByPatientFhirId(patientFhirId);
+    const data = await this.encountersService.getByPatientFhirId(patientFhirId, organizationFhirId);
     return new ApiResponseDTO({
       message: 'Encounters fetched successfully',
       data,
@@ -52,12 +53,161 @@ export class EncountersController {
     });
   }
 
+  @Get('get-by-organization/:organizationFhirId')
+  @ApiOperation({ summary: 'Get all encounters by organization FHIR ID' })
+  @ApiOkResponse({ type: ApiResponseDTO })
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getByOrganizationFhirId(
+    @Param('organizationFhirId') organizationFhirId: string,
+  ): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getEncountersByOrganization(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Encounters fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to fetch encounters by organization');
+    }
+  }
+
+  @Get('grouped-by-class/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get encounters grouped by class with counts' })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getEncountersGroupedByClass(@Param('organizationFhirId') organizationFhirId: string)
+    : Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getEncountersGroupedByClass(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Encounters grouped by class fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      console.error('Error fetching encounters grouped by class:', error);
+      throw new InternalServerErrorException('Failed to fetch encounters grouped by class');
+    }
+  }
+
+  @Get('grouped-by-type/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get encounters grouped by type with counts' })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getEncountersGroupedByType(@Param('organizationFhirId') organizationFhirId: string)
+    : Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getEncountersGroupedByType(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Encounters grouped by type fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      console.error('Error fetching encounters grouped by type:', error);
+      throw new InternalServerErrorException('Failed to fetch encounters grouped by type');
+    }
+  }
+
+  @Get('grouped-by-practitioner/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get all practitioners of an organization with their encounter counts' })
+  @ApiOkResponse({ type: ApiResponseDTO })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getPractitionersWithEncounterCounts(@Param('organizationFhirId') organizationFhirId: string)
+    : Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getPractitionersWithEncounterCounts(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Practitioners with encounter counts fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error fetching practitioners with encounter counts:', error);
+      throw new InternalServerErrorException('Failed to fetch practitioners with encounter counts');
+    }
+  }
+
+  @Get('average-length-of-stay/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get average length of stay for discharged inpatient encounters in an organization' })
+  @ApiOkResponse({ type: ApiResponseDTO })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getAverageLengthOfStay(@Param('organizationFhirId') organizationFhirId: string): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getAverageLengthOfStay(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Average length of stay calculated successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error calculating average length of stay:', error);
+      throw new InternalServerErrorException('Failed to calculate average length of stay');
+    }
+  }
+
+  @Get('yearwise-class-counts/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get yearwise encounter class counts for an organization' })
+  @ApiOkResponse({ type: ApiResponseDTO })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getYearwiseEncounterClassCounts(@Param('organizationFhirId') organizationFhirId: string): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getYearwiseEncounterClassCounts(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Yearwise encounter class counts fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error fetching yearwise encounter class counts:', error);
+      throw new InternalServerErrorException('Failed to fetch yearwise encounter class counts');
+    }
+  }
+
+  @Get('service-provider-load/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get encounter counts grouped by service provider with load percentage calculation' })
+  @ApiOkResponse({ type: ApiResponseDTO })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getServiceProviderLoadPercentage(@Param('organizationFhirId') organizationFhirId: string): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getServiceProviderLoadPercentage(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Service provider load percentage calculated successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error calculating service provider load percentage:', error);
+      throw new InternalServerErrorException('Failed to calculate service provider load percentage');
+    }
+  }
 
   @Patch('update/:fhirId')
   @ApiOperation({ summary: 'Update encounter by FHIR ID' })
   @ApiParam({ name: 'fhirId', type: String })
   @ApiOkResponse({ type: ApiResponseDTO })
-  @Roles([Role.DOCTOR, Role.STAFF])
+  @Roles([Role.DOCTOR, Role.ADMIN])
   async update(@Param('fhirId') fhirId: string, @Body() dto: UpdateEncounterDto,) {
     try {
       const updated = await this.encountersService.updateByFhirId(fhirId, dto);
@@ -76,26 +226,5 @@ export class EncountersController {
   }
 
 
-
-  // @Put('cancel/:fhirId')
-  // @Roles([Role.PATIENT, Role.DOCTOR])
-  // @ApiOperation({ summary: 'Cancel an encounter by FHIR ID' })
-  // @ApiParam({ name: 'fhirId', required: true, description: 'FHIR ID of the encounter' })
-  // @ApiResponse({ status: HttpStatus.OK, description: 'Encounter updated', type: ApiResponseDTO })
-  // async updateEncounter(@Param('fhirId') fhirId: string, @Body() dto: CancelEncounterDto, @Req() req: any,) {
-  //   try {
-  //     const user = req.user;
-  //     const payload = await this.encountersService.cancelEncounterByFhirId(fhirId, dto, user);
-  //     return new ApiResponseDTO({ message: 'Encounter scheduled successfully', data: payload, statusCode: HttpStatus.OK });
-  //   }
-  //   catch (err) {
-  //     if (err instanceof BadRequestException || err instanceof NotFoundException || err instanceof ForbiddenException)
-  //       throw err
-
-  //     console.log(err)
-  //     throw new InternalServerErrorException('An unexpected error occurred');
-  //   }
-
-  // }
 
 }

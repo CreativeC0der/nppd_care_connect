@@ -6,12 +6,15 @@ import { Redis } from 'ioredis';
   providers: [{
     provide: 'REDIS_CLIENT',
     useFactory: () => {
-      const redis = new Redis({
-        host: process.env.REDIS_HOST,
-        port: parseInt(process.env.REDIS_PORT!)
-      });
+      const redis = new Redis(
+        process.env.REDIS_URL!,
+        // if production, use tls
+        process.env.ENVIRONMENT == 'production' ? {
+          tls: {
+            rejectUnauthorized: false
+          }
+        } : {});
       console.log('Redis connected')
-      // redis.set('notification-mails', JSON.stringify([]))
       return redis
     },
   }],

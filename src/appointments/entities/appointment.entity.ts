@@ -15,6 +15,7 @@ import { Slot } from '../../schedules/entities/slot.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 export enum AppointmentStatus {
     PROPOSED = 'proposed',
@@ -29,12 +30,12 @@ export enum AppointmentStatus {
     WAITLIST = 'waitlist'
 }
 
-@Entity()
+@Entity('appointment')
 export class Appointment {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ unique: true })
+    @Column({ name: 'fhirId', unique: true })
     fhirId: string;
 
     @Column({
@@ -44,7 +45,7 @@ export class Appointment {
     })
     status: AppointmentStatus;
 
-    @Column({ nullable: true })
+    @Column({ name: 'serviceCategory', nullable: true })
     serviceCategory: string;
 
     @Column({ nullable: true })
@@ -56,14 +57,29 @@ export class Appointment {
     @Column({ nullable: true })
     reason: string;
 
+    @Column({ name: 'start', type: 'timestamp', nullable: true })
+    start: Date;
+
+    @Column({ name: 'end', type: 'timestamp', nullable: true })
+    end: Date;
+
     // Reference to Patient
     @ManyToOne(() => Patient, { eager: true })
     @JoinColumn({ name: 'patientId' })
     patient: Patient;
 
+    // Reference to Organization (service provider)
+    @ManyToOne(() => Organization, { nullable: true })
+    @JoinColumn({ name: 'serviceProvider' })
+    serviceProvider: Organization;
+
     // Reference to Practitioners
     @ManyToMany(() => Practitioner, { eager: true })
-    @JoinTable()
+    @JoinTable({
+        name: 'appointment_participants',
+        joinColumn: { name: 'appointmentId', referencedColumnName: 'id' },
+        inverseJoinColumn: { name: 'practitionersId', referencedColumnName: 'id' },
+    })
     participants: Practitioner[];
 
     @OneToMany(() => Slot, slot => slot.appointment)
