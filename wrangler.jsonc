@@ -1,5 +1,8 @@
 {
   "name": "nppd-care-connect-backend", // Name of your Worker
   "main": "src/main.ts", // Entry point file
+   "compatibility_flags": [
+      "nodejs_compat"
+    ],
   "compatibility_date": "2025-08-13", // Required for certain features
 }
