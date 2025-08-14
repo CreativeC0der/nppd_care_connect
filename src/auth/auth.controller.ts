@@ -41,8 +41,8 @@ export class AuthController {
             if (accessToken) {
                 res.cookie('accessToken', accessToken, {
                     httpOnly: true,
-                    secure: false, // Set to true in production (HTTPS)
-                    sameSite: 'lax',
+                    secure: process.env.ENVIRONMENT === 'production' ? true : false, // Set to true in production (HTTPS)
+                    sameSite: process.env.ENVIRONMENT === 'production' ? 'none' : 'lax',
                     maxAge: 60 * 60 * 1000, // 1 hour
                 });
             }
@@ -78,8 +78,8 @@ export class AuthController {
             if (accessToken) {
                 res.cookie('accessToken', accessToken, {
                     httpOnly: true,
-                    secure: false, // Set to true in production (HTTPS)
-                    sameSite: 'lax',
+                    secure: process.env.ENVIRONMENT === 'production' ? true : false, // Set to true in production (HTTPS)
+                    sameSite: process.env.ENVIRONMENT === 'production' ? 'none' : 'lax',
                     maxAge: 60 * 60 * 1000, // 1 hour
                 });
             }
