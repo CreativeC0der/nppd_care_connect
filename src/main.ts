@@ -4,9 +4,10 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { latency } from './Utils/middlewares/simulateLatency';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Swagger config
   const config = new DocumentBuilder()
     .setTitle(process.env.ENVIRONMENT == 'production' ? 'Care Connect Production API' : 'Care Connect Development API')
@@ -37,9 +38,11 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', '*'], // Replace with your frontend URL
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'https://nppd-care-connect-frontend.vercel.app', '*'], // Replace with your frontend URL
     credentials: true, // If you're using cookies or authorization headers
   });
+
+  app.set('trust proxy', 1);
 
   // Parse Cookies from frontend
   app.use(cookieParser())
