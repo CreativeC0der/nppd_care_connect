@@ -20,7 +20,7 @@ export class Organization {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ name: 'fhir_id', type: 'varchar', length: 64, unique: true })
+    @Column({ name: 'fhirId', type: 'varchar', length: 64, unique: true })
     fhirId: string;
 
     @Column({ nullable: true })

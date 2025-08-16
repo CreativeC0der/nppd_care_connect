@@ -7,9 +7,10 @@ import { Patient } from './entities/patient.entity';
 import { OtpModule } from 'src/Utils/otp/otp.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Module({
-  imports: [HttpModule, TypeOrmModule.forFeature([Patient, Encounter]), OtpModule, AuthModule],
+  imports: [HttpModule, TypeOrmModule.forFeature([Patient, Encounter, Organization]), OtpModule, AuthModule],
   controllers: [PatientsController],
   providers: [PatientsService],
   exports: [PatientsService, TypeOrmModule]

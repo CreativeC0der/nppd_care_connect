@@ -1,6 +1,6 @@
-import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, NotFoundException, Param, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, NotFoundException, Param, Post, Put, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ObservationsService } from './observations.service';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
@@ -62,6 +62,31 @@ export class ObservationsController {
       const data = await this.observationsService.getByEncounterFhirId(encounterFhirId);
       return new ApiResponseDTO({
         message: 'Observations fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  @Get('critical-by-practitioner')
+  @ApiOperation({ summary: 'Get critical observations for all patients of a practitioner' })
+  @ApiQuery({ name: 'organizationFhirId', description: 'FHIR ID of the organization', required: true })
+  @ApiOkResponse({ type: [Observation] })
+  @Roles([Role.DOCTOR])
+  async getCriticalObservationsByPractitioner(
+    @Query('organizationFhirId') organizationFhirId: string,
+    @Req() req: any
+  ): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.observationsService.getCriticalObservationsByPractitioner(
+        organizationFhirId,
+        req.user.id
+      );
+      return new ApiResponseDTO({
+        message: 'Critical observations fetched successfully',
         data,
         statusCode: HttpStatus.OK,
       });

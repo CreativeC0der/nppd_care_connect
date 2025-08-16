@@ -8,7 +8,7 @@ import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { PractitionersService } from 'src/practitioners/practitioners.service';
 import { CreateEncounterDto } from './dto/create_encounter.dto';
-import { Appointment } from 'src/appointments/entities/appointment.entity';
+import { Appointment, AppointmentStatus } from 'src/appointments/entities/appointment.entity';
 import { UpdateEncounterDto } from './dto/update_encounter.dto';
 import { Organization } from 'src/organizations/entities/organization.entity';
 
@@ -62,7 +62,7 @@ export class EncountersService {
         return this.encounterRepo.save(encounter);
     }
 
-    async getByPatientFhirId(patientFhirId: string, organizationFhirId: string): Promise<Encounter[]> {
+    async getByPatientFhirId(patientFhirId: string, organizationFhirId: string, practitionerId?: string): Promise<Encounter[]> {
         const patient = await this.patientRepo.findOne({
             where: { fhirId: patientFhirId },
         });
@@ -86,6 +86,9 @@ export class EncountersService {
                     managingOrganization: {
                         id: organization.id
                     }
+                },
+                practitioners: {
+                    id: practitionerId
                 }
             },
             relations: [
@@ -113,7 +116,7 @@ export class EncountersService {
         return this.encounterRepo.save(updatedEncounter);
     }
 
-    async getEncountersByOrganization(organizationFhirId: string): Promise<Encounter[]> {
+    async getEncountersByOrganization(organizationFhirId: string, practitionerId?: string): Promise<Encounter[]> {
         const organization = await this.organizationRepo.findOne({
             where: { fhirId: organizationFhirId }
         });
@@ -128,6 +131,9 @@ export class EncountersService {
                     managingOrganization: {
                         id: organization.id
                     }
+                },
+                practitioners: {
+                    id: practitionerId
                 }
             },
             order: { start: 'DESC' },
@@ -335,6 +341,58 @@ export class EncountersService {
             department: item.department || 'Unknown',
             load: Math.round((parseInt(item.count) / maxCount) * 100)
         }));
+    }
+
+    async getAverageWaitTimeGroupedByServiceProvider(organizationFhirId: string): Promise<any> {
+        // First validate that the organization exists
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        // Get all encounters that match the criteria:
+        // - organization matches input (through serviceProvider's managingOrganization)
+        // - status = COMPLETED
+        // - class = AMB (Ambulatory)
+        // - appointment.status = fulfilled
+        // - Both encounter start and appointment start are not null
+        const result = await this.encounterRepo
+            .createQueryBuilder('encounter')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('encounter.appointment', 'appointment')
+            .where('serviceProvider.managingOrganization = :organizationId', { organizationId: organization.id })
+            .andWhere('encounter.status = :encounterStatus', { encounterStatus: EncounterStatus.COMPLETED })
+            .andWhere('encounter.class = :encounterClass', { encounterClass: EncounterClass.AMBULATORY })
+            .andWhere('appointment.status = :appointmentStatus', { appointmentStatus: AppointmentStatus.FULFILLED })
+            .select('serviceProvider.fhirId', 'serviceProviderFhirId')
+            .addSelect('serviceProvider.name', 'serviceProviderName')
+            .addSelect('AVG(EXTRACT(EPOCH FROM (encounter.start - appointment.start)) / 60)', 'averageWaitTimeMinutes')
+            .addSelect('COUNT(encounter.id)', 'totalEncounters')
+            .groupBy('serviceProvider.fhirId')
+            .addGroupBy('serviceProvider.name')
+            .orderBy('serviceProvider.name', 'ASC')
+            .getRawMany();
+
+        // Transform the result to match the expected format
+        const serviceProviders: any[] = result.map(item => ({
+            Department: item.serviceProviderName || 'Unknown',
+            averageWaitTimeMinutes: Math.round(parseFloat(item.averageWaitTimeMinutes || '0') * 100) / 100,
+        }));
+
+        // Calculate overall statistics
+        const totalEncounters = serviceProviders.reduce((sum, sp) => sum + sp.totalEncounters, 0);
+        const overallAverageWaitTimeMinutes = totalEncounters > 0
+            ? Math.round((serviceProviders.reduce((sum, sp) => sum + (sp.averageWaitTimeMinutes * sp.totalEncounters), 0) / totalEncounters) * 100) / 100
+            : 0;
+
+        return {
+            serviceProviders,
+            overallAverageWaitTimeMinutes,
+            totalEncounters
+        };
     }
 }
 

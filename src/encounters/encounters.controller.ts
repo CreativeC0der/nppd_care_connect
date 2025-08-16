@@ -44,8 +44,12 @@ export class EncountersController {
   async getByPatientFhirId(
     @Query('patientFhirId') patientFhirId: string,
     @Query('organizationFhirId') organizationFhirId: string,
+    @Req() request: any,
   ): Promise<ApiResponseDTO> {
-    const data = await this.encountersService.getByPatientFhirId(patientFhirId, organizationFhirId);
+    const practitionerId = request.user.role === Role.DOCTOR ? request.user.id : undefined;
+
+    // Get only encounters for the practitioner if the user is a doctor
+    const data = await this.encountersService.getByPatientFhirId(patientFhirId, organizationFhirId, practitionerId);
     return new ApiResponseDTO({
       message: 'Encounters fetched successfully',
       data,
@@ -60,9 +64,11 @@ export class EncountersController {
   @Roles([Role.DOCTOR, Role.ADMIN])
   async getByOrganizationFhirId(
     @Param('organizationFhirId') organizationFhirId: string,
+    @Req() request: any,
   ): Promise<ApiResponseDTO> {
     try {
-      const data = await this.encountersService.getEncountersByOrganization(organizationFhirId);
+      const practitionerId = request.user.role === Role.DOCTOR ? request.user.id : undefined;
+      const data = await this.encountersService.getEncountersByOrganization(organizationFhirId, practitionerId);
       return new ApiResponseDTO({
         message: 'Encounters fetched successfully',
         data,
@@ -200,6 +206,28 @@ export class EncountersController {
       }
       console.error('Error calculating service provider load percentage:', error);
       throw new InternalServerErrorException('Failed to calculate service provider load percentage');
+    }
+  }
+
+  @Get('average-wait-time/:organizationFhirId')
+  @ApiParam({ name: 'organizationFhirId', type: String })
+  @ApiOperation({ summary: 'Get average wait time grouped by service provider for an organization' })
+  @ApiOkResponse({ type: ApiResponseDTO })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getAverageWaitTimeGroupedByServiceProvider(@Param('organizationFhirId') organizationFhirId: string): Promise<ApiResponseDTO> {
+    try {
+      const data = await this.encountersService.getAverageWaitTimeGroupedByServiceProvider(organizationFhirId);
+      return new ApiResponseDTO({
+        message: 'Average wait times calculated successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      console.error('Error calculating average wait times:', error);
+      throw new InternalServerErrorException('Failed to calculate average wait times');
     }
   }
 

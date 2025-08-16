@@ -1,11 +1,12 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { FindOptionsRelations, FindOptionsWhere, In, Repository } from 'typeorm';
 import { Patient } from './entities/patient.entity';
 import { HttpService } from '@nestjs/axios';
 import { CreatePatientDto } from './dto/create_patient.dto';
 import { FirebaseConfig } from 'src/Utils/config/firebase.config';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Injectable()
 export class PatientsService {
@@ -16,6 +17,8 @@ export class PatientsService {
         private firebaseConfig: FirebaseConfig,
         @InjectRepository(Encounter)
         private encounterRepository: Repository<Encounter>,
+        @InjectRepository(Organization)
+        private organizationRepository: Repository<Organization>,
     ) { }
 
     async createPatient(patientData: CreatePatientDto) {
@@ -39,7 +42,6 @@ export class PatientsService {
         return this.patientRepository.save(newPatient)
     }
 
-
     async getAllPatients(organizationFhirId: string): Promise<Patient[]> {
         const distinctPatients = await this.encounterRepository
             .createQueryBuilder('encounter')
@@ -55,4 +57,27 @@ export class PatientsService {
         });
         return patients;
     }
+
+    async getPatientsByPractitioner(organizationFhirId: string, practitionerId: string): Promise<Patient[]> {
+        const organization = await this.organizationRepository.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        const distinctPatients: Patient[] = await this.patientRepository.createQueryBuilder('patient')
+            .innerJoin('patient.encounters', 'encounter')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('encounter.practitioners', 'practitioner')
+            .where('serviceProvider.managingOrganization = :orgId', { orgId: organization.id })
+            .andWhere('practitioner.id = :practitionerId', { practitionerId })
+            .select(['patient'])
+            .distinct(true)
+            .getMany();
+
+        return distinctPatients;
+    }
+
 }

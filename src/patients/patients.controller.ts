@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, Param, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, Param, Post, UseGuards, Query, Req } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { ApiBearerAuth, ApiOkResponse, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
@@ -7,7 +7,6 @@ import { Role } from 'src/Utils/enums/role.enum';
 import { CreatePatientDto } from './dto/create_patient.dto';
 import { AuthGuard } from 'src/Utils/guards/auth.guard';
 import { RolesGuard } from 'src/Utils/guards/role.guard';
-import { Patient } from './entities/patient.entity';
 
 @Controller('patients')
 @UseGuards(AuthGuard, RolesGuard)
@@ -48,6 +47,35 @@ export class PatientsController {
     catch (err) {
       console.error(err);
       throw new InternalServerErrorException('Retrieval Failed ' + err.message);
+    }
+  }
+
+  @Get('get-by-practitioner/:organizationFhirId')
+  @ApiOkResponse({
+    description: 'List of patients for the authenticated practitioner',
+    type: ApiResponseDTO,
+  })
+  @ApiParam({ name: 'organizationFhirId', description: 'Organization FHIR ID' })
+  @Roles([Role.DOCTOR])
+  async getPatientsByPractitioner(
+    @Param('organizationFhirId') organizationFhirId: string,
+    @Req() req: any
+  ) {
+    try {
+      const practitionerId = req.user.id;
+      const payload = await this.patientService.getPatientsByPractitioner(organizationFhirId, practitionerId);
+      return new ApiResponseDTO({
+        message: 'Patients Retrieved Successfully',
+        statusCode: HttpStatus.OK,
+        data: payload
+      });
+    }
+    catch (err) {
+      console.error(err);
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
+      throw new InternalServerErrorException('Retrieval Failed: ' + err.message);
     }
   }
 

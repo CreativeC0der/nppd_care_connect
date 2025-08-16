@@ -2,14 +2,14 @@ import { Injectable, HttpException, HttpStatus, BadRequestException, NotFoundExc
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
-import { Observation } from './entities/observation.entity';
+import { Observation, ObservationInterpretation } from './entities/observation.entity';
 import { CreateObservationDto } from 'src/observations/dto/create_observation.dto';
 import { UpdateObservationDto } from './dto/update_observation.dto';
 import { Role } from 'src/Utils/enums/role.enum';
-
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Injectable()
 export class ObservationsService {
@@ -20,6 +20,7 @@ export class ObservationsService {
         @InjectRepository(Observation) private readonly observationRepo: Repository<Observation>,
         @InjectRepository(Patient) private readonly patientRepo: Repository<Patient>,
         @InjectRepository(Encounter) private readonly encounterRepo: Repository<Encounter>,
+        @InjectRepository(Organization) private readonly organizationRepo: Repository<Organization>,
     ) { }
 
     async fetchAndSaveObservations(patientFhirId: string) {
@@ -105,5 +106,31 @@ export class ObservationsService {
             where: { encounter: { id: encounter.id } },
             order: { effectiveDateTime: 'DESC' },
         });
+    }
+
+    async getCriticalObservationsByPractitioner(organizationFhirId: string, practitionerId: string): Promise<Observation[]> {
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+        // Direct SQL query to get critical observations for all patients of a practitioner
+        const criticalObservations = await this.observationRepo
+            .createQueryBuilder('observation')
+            .innerJoin('observation.patient', 'patient')
+            .innerJoin('observation.encounter', 'encounter')
+            .innerJoin('encounter.serviceProvider', 'serviceProvider')
+            .innerJoin('encounter.practitioners', 'practitioner')
+            .where('serviceProvider.managingOrganization = :organizationId', { organizationId: organization.id })
+            .andWhere('practitioner.id = :practitionerId', { practitionerId })
+            .andWhere('CAST(observation.interpretation AS TEXT) ILIKE :criticalPattern', { criticalPattern: '%critical%' })
+            .select(['observation', 'patient'])
+            .distinct(true)
+            .getMany();
+
+        // Transform raw results back to Observation entities
+        return criticalObservations;
     }
 }

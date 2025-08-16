@@ -98,20 +98,19 @@ export class OrganizationsService {
     }
 
     async getOrganizationByAdminFhirId(adminFhirId: string): Promise<Organization[]> {
-        const admin = await this.adminRepository.findOne({
-            where: { fhirId: adminFhirId },
-            relations: ['organization']
-        });
 
-        if (!admin) {
-            throw new NotFoundException('Admin not found');
+        const organization = await this.adminRepository
+            .createQueryBuilder('admin')
+            .innerJoin('admin.organization', 'organization')
+            .where('admin.fhirId = :adminFhirId', { adminFhirId })
+            .select(['organization'])
+            .getRawMany();
+
+        if (organization.length === 0) {
+            throw new NotFoundException('Organization not found');
         }
 
-        if (!admin.organization) {
-            throw new NotFoundException('Admin does not belong to any organization');
-        }
-
-        return [admin.organization];
+        return organization;
     }
 
     async getOrganizationByPatientFhirId(patientFhirId: string): Promise<Organization[]> {
@@ -134,15 +133,16 @@ export class OrganizationsService {
     async getOrganizationByPractitionerFhirId(practitionerFhirId: string): Promise<Organization[]> {
         const serviceProviders: Organization[] = await this.encounterRepository
             .createQueryBuilder('encounter')
-            .innerJoinAndSelect('encounter.serviceProvider', 'organization') // load the entity
+            .innerJoinAndSelect('encounter.serviceProvider', 'serviceProvider') // load the entity
             .innerJoin('encounter.practitioners', 'practitioner')
+            .innerJoin('serviceProvider.managingOrganization', 'organization')
             .where('practitioner.fhirId = :practitionerFhirId', { practitionerFhirId })
-            .distinct(true) // ensures distinct results
             .select(['organization']) // select only organization entity
+            .distinct(true) // ensures distinct results 
             .getRawMany();
 
         if (serviceProviders.length === 0) {
-            throw new NotFoundException('Practitioner not found');
+            throw new NotFoundException('Organization not found');
         }
 
         return serviceProviders;

@@ -47,8 +47,9 @@ async function bootstrap() {
   // Parse Cookies from frontend
   app.use(cookieParser())
 
-  // Simulate Latency
-  app.use(latency)
+  // Simulate Latency for development environment
+  if (process.env.ENVIRONMENT != 'production')
+    app.use(latency)
 
   await app.listen(process.env.PORT ?? 3000);
 }
