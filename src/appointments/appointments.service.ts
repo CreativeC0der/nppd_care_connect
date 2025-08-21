@@ -8,6 +8,7 @@ import { Slot } from '../schedules/entities/slot.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { CreateAppointmentDto } from './dto/create_appointment.dto';
 import { SlotStatus } from 'src/Utils/enums/slot_status.enum';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Injectable()
 export class AppointmentsService {
@@ -21,6 +22,8 @@ export class AppointmentsService {
 
         @InjectRepository(Practitioner)
         private readonly practitionerRepo: Repository<Practitioner>,
+        @InjectRepository(Organization)
+        private readonly organizationRepo: Repository<Organization>,
     ) { }
 
     async create(createDto: CreateAppointmentDto): Promise<Appointment> {
@@ -95,5 +98,46 @@ export class AppointmentsService {
             relations: ['slots'],
             order: { createdAt: 'DESC' },
         });
+    }
+
+    async getAppointmentRatesByMonth(organizationFhirId: string): Promise<any[]> {
+
+        const organization = await this.organizationRepo.findOne({ where: { fhirId: organizationFhirId } });
+        if (!organization) {
+            throw new NotFoundException(`Organization with fhirId ${organizationFhirId} not found`);
+        }
+
+        const query = `
+            WITH appointment_counts AS (
+                SELECT 
+                    EXTRACT(YEAR FROM a.start) as year,
+                    EXTRACT(MONTH FROM a.start) as month,
+                    COUNT(*) as total_appointments,
+                    SUM(CASE WHEN a.status = 'noshow' THEN 1 ELSE 0 END) as noshow_count,
+                    SUM(CASE WHEN a.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count
+                FROM appointment a
+                INNER JOIN organization o ON a."serviceProvider" = o.id
+                WHERE o."managing_organization" = $1
+                AND a.start IS NOT NULL
+                GROUP BY EXTRACT(YEAR FROM a.start), EXTRACT(MONTH FROM a.start)
+            )
+            SELECT 
+                format('%s-%s', year, month) as date,
+                CASE 
+                    WHEN total_appointments > 0 THEN 
+                        ROUND((noshow_count::DECIMAL / total_appointments::DECIMAL) * 100, 2)
+                    ELSE 0 
+                END as noshow_rate,
+                CASE 
+                    WHEN total_appointments > 0 THEN 
+                        ROUND((cancelled_count::DECIMAL / total_appointments::DECIMAL) * 100, 2)
+                    ELSE 0 
+                END as cancellation_rate
+            FROM appointment_counts
+            ORDER BY year ASC, month ASC
+        `;
+
+        const result = await this.appointmentRepo.query(query, [organization.id]);
+        return result;
     }
 }

@@ -26,4 +26,49 @@ export class LocationsController {
             statusCode: HttpStatus.OK,
         });
     }
+
+    @Get('root')
+    @ApiOperation({ summary: 'Get root locations (partOf = null) with their sublocations' })
+    @ApiOkResponse({ type: ApiResponseDTO })
+    @ApiQuery({ name: 'organizationFhirId', description: 'Organization FHIR ID', required: true })
+    @Roles([Role.ADMIN, Role.DOCTOR])
+    async getRootLocationsWithSubLocations(@Query('organizationFhirId') organizationFhirId: string) {
+        const data = await this.locationsService.getRootLocationsWithSubLocations(organizationFhirId);
+        return new ApiResponseDTO({
+            message: 'Root locations with sublocations retrieved successfully',
+            data,
+            length: data.length,
+            statusCode: HttpStatus.OK,
+        });
+    }
+
+    @Get()
+    @ApiOperation({ summary: 'Get all locations' })
+    @ApiOkResponse({ type: ApiResponseDTO })
+    @Roles([Role.ADMIN, Role.DOCTOR])
+    async getAllLocations() {
+        const data = await this.locationsService.getAllLocations();
+        return new ApiResponseDTO({
+            message: 'All locations retrieved successfully',
+            data,
+            statusCode: HttpStatus.OK,
+        });
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get location by ID' })
+    @ApiParam({ name: 'id', description: 'Location ID' })
+    @ApiOkResponse({ type: ApiResponseDTO })
+    @Roles([Role.ADMIN, Role.DOCTOR])
+    async getLocationById(@Param('id') id: string) {
+        const data = await this.locationsService.getLocationById(id);
+        if (!data) {
+            throw new NotFoundException('Location not found');
+        }
+        return new ApiResponseDTO({
+            message: 'Location retrieved successfully',
+            data,
+            statusCode: HttpStatus.OK,
+        });
+    }
 } 

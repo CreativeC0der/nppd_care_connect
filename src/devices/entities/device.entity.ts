@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Location } from 'src/locations/entities/location.entity';
 import { Organization } from 'src/organizations/entities/organization.entity';
 import { DeviceStatus, DeviceAvailabilityStatus } from 'src/Utils/enums/device.enum';
+import { DeviceUsage } from './device-usage.entity';
 
 @Entity('devices')
 export class Device {
@@ -44,4 +45,7 @@ export class Device {
     @ManyToOne(() => Organization, { nullable: true })
     @JoinColumn({ name: 'owner_id' })
     owner: Organization;
+
+    @OneToMany(() => DeviceUsage, (deviceUsage) => deviceUsage.device)
+    deviceUsages: DeviceUsage[];
 }

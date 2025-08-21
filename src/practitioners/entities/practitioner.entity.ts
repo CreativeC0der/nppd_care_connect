@@ -4,6 +4,7 @@ import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { MedicationRequest } from 'src/medications/entities/medication-request.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 'typeorm';
+import { PractitionerRole } from './practitioner-role.entity';
 
 @Entity('practitioners')
 export class Practitioner {
@@ -54,4 +55,7 @@ export class Practitioner {
 
     @OneToMany(() => Schedule, schedule => schedule.actor)
     schedules: Schedule[];
+
+    @OneToMany(() => PractitionerRole, practitionerRole => practitionerRole.practitioner)
+    practitionerRoles: PractitionerRole[];
 }

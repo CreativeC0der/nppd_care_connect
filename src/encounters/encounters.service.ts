@@ -136,6 +136,11 @@ export class EncountersService {
                     id: practitionerId
                 }
             },
+            relations: [
+                'practitioners',
+                'patient',
+                'serviceProvider',
+            ],
             order: { start: 'DESC' },
         });
 
@@ -165,61 +170,23 @@ export class EncountersService {
         // Use TypeORM's query builder to get grouped data by 'type'
         const result = await this.encounterRepo
             .createQueryBuilder('encounter')
-            .select('encounter.type', 'type')
+            .select('encounter.reason', 'reason')
             .addSelect('COUNT(encounter.id)', 'count')
             .innerJoin('encounter.serviceProvider', 'serviceProvider')
             .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
-            .groupBy('encounter.type')
+            .groupBy('encounter.reason')
             .where('managingOrganization.fhirId = :organizationFhirId', { organizationFhirId })
+            .orderBy('count', 'DESC')
             .getRawMany();
 
         // Transform the result to match the expected format
         return result.map(item => ({
-            type: item.type || 'UNKNOWN',
+            reason: item.reason || 'UNKNOWN',
             count: parseInt(item.count)
         }));
     }
 
-    async getPractitionersWithEncounterCounts(organizationFhirId: string) {
-        // First validate that the organization exists
-        const organization = await this.organizationRepo.findOne({
-            where: { fhirId: organizationFhirId }
-        });
 
-        if (!organization) {
-            throw new NotFoundException('Organization not found');
-        }
-
-        // Execute the query to get practitioners with encounter counts
-        const encounterCounts = await this.encounterRepo
-            .createQueryBuilder('encounter')
-            .innerJoin('encounter.serviceProvider', 'serviceProvider')
-            .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
-            .innerJoin('encounter.practitioners', 'practitioner')
-            .select('practitioner.fhirId', 'practitionerFhirId')
-            .addSelect('COUNT(encounter.id)', 'encounterCount')
-            .where('managingOrganization.fhirId = :fhirId', { fhirId: organizationFhirId })
-            .groupBy('practitioner.fhirId')
-            .orderBy('"encounterCount"', 'DESC')
-            .getRawMany();
-
-        // Transform the result to include practitioner details
-        const practitionersWithCounts = await Promise.all(
-            encounterCounts.map(async (item) => {
-                const practitioner = await this.practitionerRepo.findOne({
-                    where: { fhirId: item.practitionerFhirId }
-                });
-
-                return {
-                    practitionerFhirId: item.practitionerFhirId,
-                    encounterCount: parseInt(item.encounterCount),
-                    practitioner: practitioner || null
-                };
-            })
-        );
-
-        return practitionersWithCounts;
-    }
 
     async getAverageLengthOfStay(organizationFhirId: string) {
         // First validate that the organization exists

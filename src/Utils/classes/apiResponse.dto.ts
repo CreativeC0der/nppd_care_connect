@@ -10,12 +10,16 @@ export class ApiResponseDTO {
     @ApiProperty({ example: HttpStatus.OK, description: 'status of the api request', enum: HttpStatus })
     statusCode: HttpStatus
 
+    @ApiProperty({ example: 0, description: 'length of the data' })
+    length?: number;
+
     @ApiProperty()
     data?: any
 
     constructor(response: ApiResponseDTO) {
         this.message = response.message ?? 'Operation successfull';
         this.statusCode = response.statusCode ?? HttpStatus.OK;
+        this.length = response.length ?? 0;
         this.data = response.data;
     }
 }

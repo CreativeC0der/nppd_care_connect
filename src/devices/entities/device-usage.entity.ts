@@ -34,7 +34,7 @@ export class DeviceUsage {
     @Column({ type: 'text', nullable: true })
     reason: string;
 
-    @ManyToOne(() => Device, { nullable: false })
+    @ManyToOne(() => Device, (device) => device.deviceUsages, { nullable: false })
     @JoinColumn({ name: 'device_id' })
     device: Device;
 

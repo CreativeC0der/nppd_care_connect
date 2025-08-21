@@ -7,9 +7,10 @@ import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Slot } from '../schedules/entities/slot.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Appointment, Schedule, Practitioner, Patient, Slot])],
+  imports: [TypeOrmModule.forFeature([Appointment, Schedule, Practitioner, Patient, Slot, Organization])],
 
   controllers: [AppointmentsController],
   providers: [AppointmentsService],

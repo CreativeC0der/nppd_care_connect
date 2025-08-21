@@ -120,28 +120,7 @@ export class EncountersController {
     }
   }
 
-  @Get('grouped-by-practitioner/:organizationFhirId')
-  @ApiParam({ name: 'organizationFhirId', type: String })
-  @ApiOperation({ summary: 'Get all practitioners of an organization with their encounter counts' })
-  @ApiOkResponse({ type: ApiResponseDTO })
-  @Roles([Role.DOCTOR, Role.ADMIN])
-  async getPractitionersWithEncounterCounts(@Param('organizationFhirId') organizationFhirId: string)
-    : Promise<ApiResponseDTO> {
-    try {
-      const data = await this.encountersService.getPractitionersWithEncounterCounts(organizationFhirId);
-      return new ApiResponseDTO({
-        message: 'Practitioners with encounter counts fetched successfully',
-        data,
-        statusCode: HttpStatus.OK,
-      });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      console.error('Error fetching practitioners with encounter counts:', error);
-      throw new InternalServerErrorException('Failed to fetch practitioners with encounter counts');
-    }
-  }
+
 
   @Get('average-length-of-stay/:organizationFhirId')
   @ApiParam({ name: 'organizationFhirId', type: String })

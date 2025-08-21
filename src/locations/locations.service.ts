@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Location } from './entities/location.entity';
 import { Encounter } from '../encounters/entities/encounter.entity';
 import { Organization } from '../organizations/entities/organization.entity';
@@ -74,6 +74,20 @@ export class LocationsService {
         return this.locationRepository.findOne({
             where: { id },
             relations: ['managingOrganization', 'healthcareService', 'partOf', 'subLocations'],
+        });
+    }
+
+    async getRootLocationsWithSubLocations(organizationFhirId: string): Promise<Location[]> {
+        return this.locationRepository.find({
+            where: {
+                partOf: IsNull(),
+                managingOrganization: {
+                    fhirId: organizationFhirId
+                }
+            },
+            relations: [
+                'subLocations',
+            ],
         });
     }
 } 

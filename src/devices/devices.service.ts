@@ -5,13 +5,37 @@ import { Device } from './entities/device.entity';
 import { DeviceUsage } from './entities/device-usage.entity';
 import { Location } from 'src/locations/entities/location.entity';
 import { Organization } from 'src/organizations/entities/organization.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
-export interface DeviceUtilizationResult {
+export class DeviceUtilizationResult {
+    @ApiProperty({ description: 'Number of distinct devices used' })
     distinctDevicesUsed: number;
+
+    @ApiProperty({ description: 'Total number of devices' })
     totalDevices: number;
+
+    @ApiProperty({ description: 'Device utilization percentage' })
     utilization: number;
+
+    @ApiProperty({ description: 'Type of device analyzed' })
     deviceType: string;
+
+    @ApiProperty({ description: 'Organization FHIR ID' })
     organizationFhirId: string;
+
+    constructor(
+        distinctDevicesUsed: number,
+        totalDevices: number,
+        utilization: number,
+        deviceType: string,
+        organizationFhirId: string
+    ) {
+        this.distinctDevicesUsed = distinctDevicesUsed;
+        this.totalDevices = totalDevices;
+        this.utilization = utilization;
+        this.deviceType = deviceType;
+        this.organizationFhirId = organizationFhirId;
+    }
 }
 
 @Injectable()
@@ -53,12 +77,45 @@ export class DevicesService {
         // 4. Calculate utilization- devices used/ total devices *100
         const utilization = totalDevices > 0 ? (distinctDevicesUsed / totalDevices) * 100 : 0;
 
-        return {
+        return new DeviceUtilizationResult(
             distinctDevicesUsed,
             totalDevices,
-            utilization: Math.round(utilization * 100) / 100, // Round to 2 decimal places
+            Math.round(utilization * 100) / 100, // Round to 2 decimal places
             deviceType,
-            organizationFhirId,
-        };
+            organizationFhirId
+        );
+    }
+
+    async getAllDevicesWithUsageAndLocation(organizationFhirId: string): Promise<any[]> {
+        if (!organizationFhirId || organizationFhirId.trim() === '') {
+            throw new Error('Organization FHIR ID is required');
+        }
+
+        const query = `SELECT 
+                            row_to_json(devices.*) AS device,
+                            row_to_json(locations.*) AS location,
+                            row_to_json(latest_device_usage.*) AS latest_device_usage,
+                            row_to_json(patients.*) AS patient
+                        FROM devices
+                        LEFT JOIN organization
+                            ON organization.id = devices.owner_id
+                        LEFT JOIN locations
+                            ON locations.id = devices.location_id
+                        LEFT JOIN LATERAL (
+                            SELECT du.*
+                            FROM device_usage du
+                            WHERE du.device_id = devices.id
+                            ORDER BY du.start DESC
+                            LIMIT 1
+                        ) latest_device_usage ON true
+                        LEFT JOIN patients
+                            ON patients.id = latest_device_usage.patient_id
+                        WHERE organization."fhirId" = $1
+            `;
+
+        const result = await this.deviceRepository.query(query, [organizationFhirId]);
+
+        return result;
+
     }
 }
