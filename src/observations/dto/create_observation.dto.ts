@@ -7,6 +7,7 @@ import {
     IsOptional,
     IsDateString,
     IsString,
+    IsNotEmpty,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ObservationDto } from './observation.dto';
@@ -17,9 +18,9 @@ export class CreateObservationDto {
     subjectFhirId: string;
 
     @ApiPropertyOptional({ example: '3b6c0a7a-dfb4-4424-9b71-cb452c20c92e', description: 'Encounter FHIR ID' })
-    @IsOptional()
     @IsString()
-    encounterFhirId?: string;
+    @IsNotEmpty()
+    encounterFhirId: string;
 
     @ApiPropertyOptional({ example: '2025-06-04T10:30:00Z', description: 'Timestamp when all observations were issued' })
     @IsOptional()

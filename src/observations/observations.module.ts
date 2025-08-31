@@ -7,11 +7,13 @@ import { Patient } from 'src/patients/entities/patient.entity';
 import { ObservationsService } from './observations.service';
 import { Observation } from './entities/observation.entity';
 import { Organization } from 'src/organizations/entities/organization.entity';
+import { EncountersModule } from 'src/encounters/encounters.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Patient, Encounter, Observation, Organization]),
-    HttpModule
+    HttpModule,
+    EncountersModule
   ],
   controllers: [ObservationsController],
   providers: [ObservationsService],

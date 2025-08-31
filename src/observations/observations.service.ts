@@ -48,16 +48,14 @@ export class ObservationsService {
         if (!patient) throw new BadRequestException('Patient not found');
 
         // Fetch and validate encounter if provided
-        let encounter: Encounter | null;
-        if (encounterFhirId) {
-            encounter = await this.encounterRepo.findOne({
-                where: {
-                    fhirId: encounterFhirId,
-                    patient: { id: patient.id },
-                },
-            });
-            if (!encounter) throw new BadRequestException('Encounter not found');
-        }
+        const encounter = await this.encounterRepo.findOne({
+            where: {
+                fhirId: encounterFhirId,
+                patient: { id: patient.id },
+                practitioners: { id: request.user.role === Role.DOCTOR ? request.user.id : null }, // Only allow doctors to create observations for their own encounters
+            },
+        });
+        if (!encounter) throw new BadRequestException('Encounter not found or You are not authorized to create observations for this encounter');
 
         // Map each observation
         const newObservations = observations.map((obsDto) =>
@@ -132,5 +130,59 @@ export class ObservationsService {
 
         // Transform raw results back to Observation entities
         return criticalObservations;
+    }
+
+    async getObservationTrendsByPatient(
+        patientFhirId: string,
+        organizationFhirId: string,
+        practitionerId?: string
+    ): Promise<Observation[]> {
+        // Validate organization and patient (also prevents sql injection)
+
+        const [organization, patient] = await Promise.all([
+            this.organizationRepo.findOne({
+                where: { fhirId: organizationFhirId }
+            }),
+            this.patientRepo.findOne({
+                where: { fhirId: patientFhirId }
+            }),
+        ]);
+
+        if (!organization || !patient) {
+            throw new NotFoundException('Organization or patient not found');
+        }
+
+        const aggregateQuery = `--sql 
+            SELECT 
+                concat(EXTRACT(YEAR FROM obs."effectiveDateTime"), '-', EXTRACT(MONTH FROM obs."effectiveDateTime")) as Year_Month,
+                obs.code,
+                avg(CAST(obs.value AS DOUBLE PRECISION)) as average_value
+            FROM observations obs
+                INNER JOIN encounters enc ON obs."encounterId" = enc.id
+                INNER JOIN organization org ON enc."serviceProvider" = org.id
+            WHERE org.managing_organization = '${organization.id}'
+            AND obs."patientId" = '${patient.id}'
+            AND obs.code IN ('Glucose','Weight')
+            GROUP BY 
+                obs.code,
+                EXTRACT(YEAR FROM obs."effectiveDateTime"),
+                EXTRACT(MONTH FROM obs."effectiveDateTime")
+            ORDER BY Year_Month DESC
+        `;
+
+        const query = `--sql
+            SELECT * FROM crosstab(
+                $$
+                    ${aggregateQuery}
+                $$,
+                $$
+                    VALUES ('Glucose'),('Weight')
+                $$
+            ) as ct("Year_Month" text, "Glucose" double precision, "Weight" double precision)
+        `;
+
+        const observations = await this.observationRepo.query(query);
+
+        return observations;
     }
 }

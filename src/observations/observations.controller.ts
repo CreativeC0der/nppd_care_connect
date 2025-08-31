@@ -9,13 +9,16 @@ import { Roles } from 'src/Utils/decorators/roles.decorator';
 import { Role } from 'src/Utils/enums/role.enum';
 import { UpdateObservationDto } from './dto/update_observation.dto';
 import { Observation } from './entities/observation.entity';
+import { EncountersService } from 'src/encounters/encounters.service';
 
 @Controller('observations')
 @Controller('careplans')
 @UseGuards(AuthGuard, RolesGuard)
 @ApiBearerAuth('access-token')
 export class ObservationsController {
-  constructor(private readonly observationsService: ObservationsService) { }
+  constructor(private readonly observationsService: ObservationsService
+    , private readonly encountersService: EncountersService
+  ) { }
 
   @Post('create')
   @ApiResponse({ status: 201, type: ApiResponseDTO })
@@ -87,6 +90,37 @@ export class ObservationsController {
       );
       return new ApiResponseDTO({
         message: 'Critical observations fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  @Get('trends-by-patient')
+  @ApiOperation({ summary: 'Get observation trends by patient' })
+  @ApiQuery({ name: 'patientFhirId', description: 'FHIR ID of the patient', required: true })
+  @ApiQuery({ name: 'organizationFhirId', description: 'FHIR ID of the organization', required: true })
+  @ApiOkResponse({ type: [Observation] })
+  @Roles([Role.DOCTOR])
+  async getObservationTrendsByPatient(
+    @Query('patientFhirId') patientFhirId: string,
+    @Query('organizationFhirId') organizationFhirId: string,
+    @Req() req: any
+  ): Promise<ApiResponseDTO> {
+    try {
+      const isLink = await this.encountersService.checkPatientPractitionerLink(req.user.id, patientFhirId, organizationFhirId);
+      if (!isLink)
+        throw new UnauthorizedException('You are not authorized to fetch observations for this patient');
+
+      const data = await this.observationsService.getObservationTrendsByPatient(
+        patientFhirId,
+        organizationFhirId,
+      );
+      return new ApiResponseDTO({
+        message: 'Observation trends fetched successfully',
         data,
         statusCode: HttpStatus.OK,
       });

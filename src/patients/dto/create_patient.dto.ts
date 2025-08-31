@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsDateString, IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreatePatientDto {
     @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'FHIR ID of the patient' })
@@ -47,21 +47,20 @@ export class CreatePatientDto {
     @IsString()
     preferredLanguage?: string;
 
-    @ApiProperty({ example: true, description: 'Is the patient active?' })
-    @IsBoolean()
-    active: boolean;
-
-    @ApiProperty({ example: false, description: 'Is the patient deceased?' })
-    @IsBoolean()
-    deceased: boolean;
+    @ApiProperty({ example: 'active', description: 'Status of the patient', enum: ['active', 'deceased'] })
+    @IsString()
+    status: 'active' | 'deceased';
 
     @ApiProperty({ example: '2023-01-01', description: 'Date of death of the patient', required: false })
     @IsOptional()
-    @IsDateString()
     dateOfDeath?: string;
 
     @ApiProperty({ example: 'firebase_id_token', description: 'Firebase ID token', required: false })
     @IsOptional()
     @IsString()
     firebaseToken?: string;
+
+    @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'Organization ID to link the patient to', required: true })
+    @IsString()
+    organizationFhirId: string;
 }

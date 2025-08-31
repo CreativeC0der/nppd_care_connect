@@ -73,20 +73,4 @@ export class CreateQuestionnaireResponseDto {
     @IsString()
     @IsOptional()
     encounterFhirId?: string;
-
-    @ApiProperty({
-        description: 'UUID of the patient who filled out the form',
-        example: '7a3a75e9-1954-45dc-9b89-4debd20c19d5',
-    })
-    @IsString()
-    subjectFhirId: string;
-
-    @ApiProperty({
-        description: 'UUID of the practitioner who authored the response (optional)',
-        example: 'fc7f1d33-3a6e-46c7-9dd6-35b66f3ecf93',
-        required: false,
-    })
-    @IsString()
-    @IsOptional()
-    authorFhirId?: string;
 }

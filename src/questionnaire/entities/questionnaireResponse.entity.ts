@@ -4,13 +4,11 @@ import {
     Column,
     CreateDateColumn,
     UpdateDateColumn,
-    OneToOne,
     JoinColumn,
     ManyToOne,
 } from 'typeorm';
 import { Questionnaire } from './questionnaire.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
-import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 
 export enum QuestionnaireResponseStatus {
@@ -46,13 +44,9 @@ export class QuestionnaireResponse {
     @JoinColumn({ name: 'questionnaireId' })
     questionnaire: Questionnaire;
 
-    @OneToOne(() => Encounter, { nullable: false })
+    @ManyToOne(() => Encounter, { nullable: false })
     @JoinColumn({ name: 'encounterId' })
     encounter: Encounter;
-
-    @ManyToOne(() => Patient, { eager: true })
-    @JoinColumn({ name: 'subjectId' })
-    subject: Patient;
 
     @ManyToOne(() => Practitioner, { nullable: true })
     @JoinColumn({ name: 'authorId' })

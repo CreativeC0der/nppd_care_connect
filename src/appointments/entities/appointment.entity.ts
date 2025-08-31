@@ -64,12 +64,12 @@ export class Appointment {
     end: Date;
 
     // Reference to Patient
-    @ManyToOne(() => Patient, { eager: true })
+    @ManyToOne(() => Patient, { eager: true, nullable: false })
     @JoinColumn({ name: 'patientId' })
     patient: Patient;
 
     // Reference to Organization (service provider)
-    @ManyToOne(() => Organization, { nullable: true })
+    @ManyToOne(() => Organization, { nullable: false })
     @JoinColumn({ name: 'serviceProvider' })
     serviceProvider: Organization;
 

@@ -34,9 +34,12 @@ export class AppointmentsService {
             specialty,
             description,
             reason,
+            start,
+            end,
             patientFhirId: patientId,
             practitionerFhirIds: practitionerIds = [],
             slotFhirIds: slotIds = [],
+            organizationFhirId,
         } = createDto;
 
         const patient = await this.patientRepo.findOne({ where: { fhirId: patientId } });
@@ -60,6 +63,11 @@ export class AppointmentsService {
             throw new BadRequestException('One or more slots not found');
         }
 
+        const organization = await this.organizationRepo.findOne({ where: { fhirId: organizationFhirId } });
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
         const appointment = this.appointmentRepo.create({
             fhirId,
             status,
@@ -67,8 +75,11 @@ export class AppointmentsService {
             specialty,
             description,
             reason,
+            start: new Date(start),
+            end: new Date(end),
             patient,
             participants: practitionerEntities,
+            serviceProvider: organization,
         });
 
         const newAppointment = await this.appointmentRepo.save(appointment);
@@ -100,26 +111,28 @@ export class AppointmentsService {
         });
     }
 
-    async getAppointmentRatesByMonth(organizationFhirId: string): Promise<any[]> {
+    async getAppointmentRatesByMonth(organizationFhirId: string, practitionerId?: string): Promise<any[]> {
 
         const organization = await this.organizationRepo.findOne({ where: { fhirId: organizationFhirId } });
         if (!organization) {
             throw new NotFoundException(`Organization with fhirId ${organizationFhirId} not found`);
         }
 
-        const query = `
+        const query = `--sql
             WITH appointment_counts AS (
                 SELECT 
-                    EXTRACT(YEAR FROM a.start) as year,
-                    EXTRACT(MONTH FROM a.start) as month,
+                    EXTRACT(YEAR FROM appt.start) as year,
+                    EXTRACT(MONTH FROM appt.start) as month,
                     COUNT(*) as total_appointments,
-                    SUM(CASE WHEN a.status = 'noshow' THEN 1 ELSE 0 END) as noshow_count,
-                    SUM(CASE WHEN a.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count
-                FROM appointment a
-                INNER JOIN organization o ON a."serviceProvider" = o.id
+                    SUM(CASE WHEN appt.status = 'noshow' THEN 1 ELSE 0 END) as noshow_count,
+                    SUM(CASE WHEN appt.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count
+                FROM appointment appt
+                INNER JOIN organization o ON appt."serviceProvider" = o.id
+                INNER JOIN appointment_participants appt_part ON appt.id = appt_part."appointmentId"
                 WHERE o."managing_organization" = $1
-                AND a.start IS NOT NULL
-                GROUP BY EXTRACT(YEAR FROM a.start), EXTRACT(MONTH FROM a.start)
+                AND appt_part."practitionersId" = COALESCE($2, appt_part."practitionersId")
+                AND appt.start IS NOT NULL
+                GROUP BY EXTRACT(YEAR FROM appt.start), EXTRACT(MONTH FROM appt.start)
             )
             SELECT 
                 format('%s-%s', year, month) as date,
@@ -137,7 +150,29 @@ export class AppointmentsService {
             ORDER BY year ASC, month ASC
         `;
 
-        const result = await this.appointmentRepo.query(query, [organization.id]);
+        const result = await this.appointmentRepo.query(query, [organization.id, practitionerId ?? null]);
         return result;
+    }
+
+    async findAll(organizationFhirId: string, practitionerId?: string): Promise<Appointment[]> {
+        const organization = await this.organizationRepo.findOne({ where: { fhirId: organizationFhirId } });
+        if (!organization) {
+            throw new NotFoundException(`Organization with fhirId ${organizationFhirId} not found`);
+        }
+
+        return this.appointmentRepo.find({
+            where: {
+                serviceProvider: {
+                    managingOrganization: {
+                        fhirId: organizationFhirId
+                    }
+                },
+                participants: {
+                    id: practitionerId
+                }
+            },
+            relations: ['patient', 'participants', 'serviceProvider', 'slots'],
+            order: { start: 'DESC' }
+        })
     }
 }

@@ -7,9 +7,10 @@ import { Patient } from 'src/patients/entities/patient.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
 import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Procedure, Patient, Encounter, Condition, DiagnosticReport])],
+    imports: [TypeOrmModule.forFeature([Procedure, Patient, Encounter, Condition, DiagnosticReport, Organization])],
     controllers: [ProceduresController],
     providers: [ProceduresService],
     exports: [ProceduresService, TypeOrmModule]

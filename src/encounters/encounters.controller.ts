@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Get, HttpStatus, InternalServerErrorException, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Get, HttpStatus, InternalServerErrorException, NotFoundException, Param, Patch, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { EncountersService } from './encounters.service';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 import { CreateEncounterDto } from './dto/create_encounter.dto';
@@ -40,21 +40,37 @@ export class EncountersController {
   @ApiOkResponse({ type: ApiResponseDTO })
   @ApiQuery({ name: 'patientFhirId', type: String })
   @ApiQuery({ name: 'organizationFhirId', type: String })
+  @ApiQuery({ name: 'practitionerFhirId', type: String, required: false })
   @Roles([Role.DOCTOR, Role.ADMIN])
   async getByPatientFhirId(
+    @Req() request: any,
     @Query('patientFhirId') patientFhirId: string,
     @Query('organizationFhirId') organizationFhirId: string,
-    @Req() request: any,
+    @Query('practitionerFhirId') practitionerFhirId?: string,
   ): Promise<ApiResponseDTO> {
-    const practitionerId = request.user.role === Role.DOCTOR ? request.user.id : undefined;
 
-    // Get only encounters for the practitioner if the user is a doctor
-    const data = await this.encountersService.getByPatientFhirId(patientFhirId, organizationFhirId, practitionerId);
-    return new ApiResponseDTO({
-      message: 'Encounters fetched successfully',
-      data,
-      statusCode: HttpStatus.OK,
-    });
+    try {
+
+      if (request.user.role === Role.DOCTOR) {
+        const isLink = await this.encountersService.checkPatientPractitionerLink(request.user.id, patientFhirId, organizationFhirId);
+        if (!isLink)
+          throw new UnauthorizedException('You are not authorized to fetch encounters for this patient');
+      }
+
+      const data = await this.encountersService.getByPatient(patientFhirId, organizationFhirId, practitionerFhirId);
+      return new ApiResponseDTO({
+        message: 'Encounters fetched successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+
+    } catch (error) {
+      if (error instanceof UnauthorizedException)
+        throw error;
+
+      throw new InternalServerErrorException('Failed to fetch encounters by patient');
+
+    }
   }
 
   @Get('get-by-organization/:organizationFhirId')
@@ -193,9 +209,12 @@ export class EncountersController {
   @ApiOperation({ summary: 'Get average wait time grouped by service provider for an organization' })
   @ApiOkResponse({ type: ApiResponseDTO })
   @Roles([Role.DOCTOR, Role.ADMIN])
-  async getAverageWaitTimeGroupedByServiceProvider(@Param('organizationFhirId') organizationFhirId: string): Promise<ApiResponseDTO> {
+  async getAverageWaitTimeGroupedByServiceProvider(
+    @Param('organizationFhirId') organizationFhirId: string,
+    @Req() request: any): Promise<ApiResponseDTO> {
     try {
-      const data = await this.encountersService.getAverageWaitTimeGroupedByServiceProvider(organizationFhirId);
+      const practitionerId = request.user.role === Role.DOCTOR ? request.user.id : undefined;
+      const data = await this.encountersService.getAverageWaitTimeGroupedByServiceProvider(organizationFhirId, practitionerId);
       return new ApiResponseDTO({
         message: 'Average wait times calculated successfully',
         data,

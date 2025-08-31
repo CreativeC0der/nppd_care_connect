@@ -13,6 +13,18 @@ export enum LocationMode {
     KIND = 'kind',
 }
 
+export enum LocationForm {
+    BUILDING = 'building',
+    FLOOR = 'floor',
+    WING = 'wing',
+    ROOM = 'room',
+    BED = 'bed',
+    VEHICLE = 'vehicle',
+    OUTDOOR = 'outdoor',
+    VIRTUAL = 'virtual',
+    OTHER = 'other',
+}
+
 @Entity('locations')
 export class Location {
     @PrimaryGeneratedColumn('uuid')
@@ -50,8 +62,12 @@ export class Location {
     @Column({ type: 'text', nullable: true })
     address: string;
 
-    @Column({ nullable: true })
-    form: string;
+    @Column({
+        type: 'enum',
+        enum: LocationForm,
+        nullable: false
+    })
+    form: LocationForm;
 
     @ManyToOne(() => Location, { nullable: true })
     @JoinColumn({ name: 'partOf' })
@@ -65,6 +81,6 @@ export class Location {
     healthcareService: HealthcareService;
 
     @ManyToOne(() => Organization, { nullable: true })
-    @JoinColumn({ name: 'managingOrganization' })
-    managingOrganization: Organization;
+    @JoinColumn({ name: 'organization_id' })
+    organization: Organization;
 } 

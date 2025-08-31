@@ -1,18 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDate, IsDateString, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { EncounterClass, EncounterStatus } from '../entities/encounter.entity';
 
-export enum EncounterStatus {
-    PLANNED = 'planned',
-    IN_PROGRESS = 'in-progress',
-    ON_HOLD = 'on-hold',
-    DISCHARGED = 'discharged',
-    COMPLETED = 'completed',
-    CANCELLED = 'cancelled',
-    DISCONTINUED = 'discontinued',
-    ENTERED_IN_ERROR = 'entered-in-error',
-    UNKNOWN = 'unknown',
-}
+
 
 export class CreateEncounterDto {
     @ApiProperty({
@@ -25,7 +16,8 @@ export class CreateEncounterDto {
 
     @ApiProperty({
         description: 'The status of the encounter',
-        example: 'scheduled',
+        example: 'planned',
+        required: true,
     })
     @IsString()
     @IsEnum(EncounterStatus)
@@ -66,6 +58,14 @@ export class CreateEncounterDto {
     end?: Date;
 
     @ApiProperty({
+        description: 'The class of the encounter',
+        example: EncounterClass.AMBULATORY,
+        required: true,
+    })
+    @IsEnum(EncounterClass)
+    class: EncounterClass;
+
+    @ApiProperty({
         description: 'The ID of the patient associated with this encounter',
         example: '550e8400-e29b-41d4-a716-446655440000',
     })
@@ -93,4 +93,14 @@ export class CreateEncounterDto {
     @IsString()
     @IsNotEmpty()
     appointmentFhirId: string;
+
+    @ApiProperty({
+        description: 'Organization FHIR ID',
+        example: 'org-001',
+        required: true,
+        type: String,
+    })
+    @IsString()
+    @IsOptional()
+    organizationFhirId?: string;
 }

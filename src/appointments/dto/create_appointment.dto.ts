@@ -7,6 +7,7 @@ import {
     IsUUID,
     IsArray,
     ArrayNotEmpty,
+    IsDateString,
 } from 'class-validator';
 import { AppointmentStatus } from '../entities/appointment.entity';
 
@@ -61,6 +62,22 @@ export class CreateAppointmentDto {
     reason?: string;
 
     @ApiProperty({
+        description: 'Start date and time of the appointment',
+        example: '2025-01-01T10:00:00Z',
+    })
+    @IsDateString()
+    @IsNotEmpty()
+    start: string;
+
+    @ApiProperty({
+        description: 'End date and time of the appointment',
+        example: '2025-01-01T10:00:00Z',
+    })
+    @IsDateString()
+    @IsNotEmpty()
+    end: string;
+
+    @ApiProperty({
         description: 'UUID of the patient',
         example: '94a8c3ae-16c3-4315-8e13-b9bd6d9a4022',
     })
@@ -87,4 +104,12 @@ export class CreateAppointmentDto {
     @IsOptional()
     @IsArray()
     slotFhirIds?: string[];
+
+    @ApiPropertyOptional({
+        description: 'FHIR ID of the organization',
+        example: 'org-001',
+    })
+    @IsString()
+    @IsOptional()
+    organizationFhirId?: string;
 }

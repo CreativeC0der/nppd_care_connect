@@ -5,6 +5,7 @@ import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create_organization.dto';
 import { Admin } from 'src/admin/entities/admin.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
+import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 
 @Injectable()
 export class OrganizationsService {
@@ -15,6 +16,8 @@ export class OrganizationsService {
         private adminRepository: Repository<Admin>,
         @InjectRepository(Encounter)
         private encounterRepository: Repository<Encounter>,
+        @InjectRepository(Practitioner)
+        private practitionerRepository: Repository<Practitioner>,
     ) { }
 
     async createOrganization(organizationData: CreateOrganizationDto): Promise<Organization> {
@@ -54,10 +57,19 @@ export class OrganizationsService {
         return this.organizationRepository.save(newOrganization);
     }
 
-    async getAllOrganizations(): Promise<Organization[]> {
+    async getAllOrganizations(organizationFhirId: string): Promise<Organization[]> {
         return this.organizationRepository.find({
-            order: { createdAt: 'DESC' },
-            relations: ['admins']
+            where: [
+                {
+                    fhirId: organizationFhirId
+                },
+                {
+                    managingOrganization: {
+                        fhirId: organizationFhirId
+                    }
+                },
+            ],
+            order: { createdAt: 'DESC' }
         });
     }
 
@@ -131,20 +143,20 @@ export class OrganizationsService {
     }
 
     async getOrganizationByPractitionerFhirId(practitionerFhirId: string): Promise<Organization[]> {
-        const serviceProviders: Organization[] = await this.encounterRepository
-            .createQueryBuilder('encounter')
-            .innerJoinAndSelect('encounter.serviceProvider', 'serviceProvider') // load the entity
-            .innerJoin('encounter.practitioners', 'practitioner')
+        const organizations: Organization[] = await this.practitionerRepository
+            .createQueryBuilder('practitioner')
+            .innerJoin('practitioner.practitionerRoles', 'practitionerRole')
+            .innerJoin('practitionerRole.organization', 'serviceProvider')
             .innerJoin('serviceProvider.managingOrganization', 'organization')
             .where('practitioner.fhirId = :practitionerFhirId', { practitionerFhirId })
-            .select(['organization']) // select only organization entity
-            .distinct(true) // ensures distinct results 
+            .select(['organization'])
+            .distinct(true)
             .getRawMany();
 
-        if (serviceProviders.length === 0) {
+        if (organizations.length === 0) {
             throw new NotFoundException('Organization not found');
         }
 
-        return serviceProviders;
+        return organizations;
     }
 } 

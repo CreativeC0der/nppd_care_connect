@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Questionnaire } from './entities/questionnaire.entity';
 import { CreateQuestionnaireDto } from './dto/create-questionnaire.dto';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
@@ -26,6 +26,8 @@ export class QuestionnaireService {
 
     @InjectRepository(Practitioner)
     private readonly practitionerRepo: Repository<Practitioner>,
+
+    private dataSource: DataSource,
   ) { }
 
   async createQuestionnaire(dto: CreateQuestionnaireDto): Promise<Questionnaire> {
@@ -41,15 +43,12 @@ export class QuestionnaireService {
   }
 
   async createResponse(dto: CreateQuestionnaireResponseDto) {
-    const [questionnaire, subject, encounter, author] = await Promise.all([
+    const [questionnaire, encounter] = await Promise.all([
       this.questionnaireRepo.findOne({ where: { fhirId: dto.questionnaireFhirId } }),
-      this.patientRepo.findOne({ where: { fhirId: dto.subjectFhirId } }),
       dto.encounterFhirId ? this.encounterRepo.findOne({ where: { fhirId: dto.encounterFhirId } }) : null,
-      dto.authorFhirId ? this.practitionerRepo.findOne({ where: { fhirId: dto.authorFhirId } }) : null,
     ]);
 
     if (!questionnaire) throw new NotFoundException('Questionnaire not found');
-    if (!subject) throw new NotFoundException('Patient (subject) not found');
     if (!encounter) throw new NotFoundException('Encounter not found');
 
     const response = this.responseRepo.create({
@@ -58,9 +57,8 @@ export class QuestionnaireService {
       authored: dto.authored ? new Date(dto.authored) : new Date(),
       items: dto.items,
       questionnaire,
-      subject,
       encounter,
-      author,
+      author: null
     });
 
     return await this.responseRepo.save(response);
@@ -70,5 +68,44 @@ export class QuestionnaireService {
     return this.questionnaireRepo.find({
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async calculateNPSByDepartment(): Promise<Array<{ department: string, npsScore: number }>> {
+    try {
+      const query = `
+        SELECT 
+          COALESCE(hs.name, 'Unknown') as department,
+          ROUND(
+            (
+              (COUNT(CASE WHEN CAST(qr.items->>'score' AS INTEGER) >= 9 THEN 1 END) - 
+               COUNT(CASE WHEN CAST(qr.items->>'score' AS INTEGER) <= 6 THEN 1 END)) * 100.0 / 
+              NULLIF(COUNT(*), 0)
+            ), 2
+          ) as nps_score
+        FROM questionnaire_response qr
+        INNER JOIN encounters e ON qr.encounter_id = e.id
+        INNER JOIN e.service_pro
+        WHERE qr.status = 'completed'
+          AND qr.items->>'score' IS NOT NULL
+          AND CAST(qr.items->>'score' AS INTEGER) BETWEEN 0 AND 10
+        GROUP BY hs.name
+        ORDER BY nps_score DESC
+      `;
+
+      const result = await this.dataSource.query(query);
+
+      if (!result || result.length === 0) {
+        return [];
+      }
+
+      return result.map(row => ({
+        department: row.department || 'Unknown',
+        npsScore: parseFloat(row.nps_score) || 0
+      })).filter(item => item.department !== 'Unknown' || item.npsScore !== 0);
+
+    } catch (error) {
+      console.error('Failed to calculate NPS scores:', error);
+      return [];
+    }
   }
 }

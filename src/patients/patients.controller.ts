@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, Param, Post, UseGuards, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpStatus, InternalServerErrorException, Param, Post, UseGuards, Query, Req, UnauthorizedException } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { ApiBearerAuth, ApiOkResponse, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
@@ -38,9 +38,10 @@ export class PatientsController {
     type: ApiResponseDTO,
   })
   @ApiParam({ name: 'organizationFhirId', description: 'Organization FHIR ID' })
-  @Roles([Role.DOCTOR, Role.ADMIN])
-  async getAllPatients(@Param('organizationFhirId') organizationFhirId: string) {
+  @Roles([Role.ADMIN])
+  async getAllPatients(@Param('organizationFhirId') organizationFhirId: string, @Req() request: any) {
     try {
+
       const payload = await this.patientService.getAllPatients(organizationFhirId);
       return new ApiResponseDTO({ message: 'Patients Retrieved Successfully', statusCode: HttpStatus.OK, data: payload });
     }

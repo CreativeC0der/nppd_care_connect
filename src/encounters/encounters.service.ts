@@ -28,7 +28,7 @@ export class EncountersService {
     ) { }
 
     async createEncounter(dto: CreateEncounterDto, request: any): Promise<Encounter> {
-        const { patientFhirId, practitionerFhirIds, appointmentFhirId, ...encounterDto } = dto;
+        const { patientFhirId, practitionerFhirIds, appointmentFhirId, organizationFhirId, ...encounterDto } = dto;
 
         // 1. Validate patient
         const patient = await this.patientRepo.findOne({ where: { fhirId: patientFhirId } });
@@ -37,9 +37,21 @@ export class EncountersService {
         }
 
         // Appointment validate
-        const appointment = await this.appointmentRepo.findOne({ where: { fhirId: appointmentFhirId } });
+        const appointment = await this.appointmentRepo.findOne({
+            where: { fhirId: appointmentFhirId },
+            relations: ['serviceProvider']
+        });
         if (!appointment) {
             throw new NotFoundException('Appointment not found');
+        }
+
+        // If organizationFhirId is provided, use it, otherwise use the organization from the appointment
+        let organization: Organization | null = null;
+        if (organizationFhirId) {
+            organization = await this.organizationRepo.findOne({ where: { fhirId: organizationFhirId } });
+            if (!organization) {
+                throw new NotFoundException('Organization not found');
+            }
         }
 
         // 2. Fetch all requested practitioners
@@ -56,13 +68,14 @@ export class EncountersService {
             ...encounterDto,
             patient,
             practitioners,
-            appointment
+            appointment,
+            serviceProvider: organization ? organization : appointment.serviceProvider
         });
 
         return this.encounterRepo.save(encounter);
     }
 
-    async getByPatientFhirId(patientFhirId: string, organizationFhirId: string, practitionerId?: string): Promise<Encounter[]> {
+    async getByPatient(patientFhirId: string, organizationFhirId: string, practitionerFhirId?: string): Promise<Encounter[]> {
         const patient = await this.patientRepo.findOne({
             where: { fhirId: patientFhirId },
         });
@@ -79,6 +92,13 @@ export class EncountersService {
             throw new NotFoundException('Organization not found');
         }
 
+        let practitioner: Practitioner | null = null;
+        if (practitionerFhirId) {
+            practitioner = await this.practitionerRepo.findOne({
+                where: { fhirId: practitionerFhirId }
+            });
+        }
+
         return this.encounterRepo.find({
             where: {
                 patient: { id: patient.id },
@@ -87,21 +107,58 @@ export class EncountersService {
                         id: organization.id
                     }
                 },
-                practitioners: {
-                    id: practitionerId
-                }
+                practitioners: { id: practitioner?.id }
             },
             relations: [
+                'patient',
                 'practitioners',
                 'conditions',
                 'medications',
                 'medications.medication',
                 'procedures',
+                'observations',
                 'diagnosticReports',
                 'diagnosticReports.results',
             ],
             order: { start: 'DESC' },
         });
+    }
+
+    async checkPatientPractitionerLink(practitionerId: string, patientFhirId: string, organizationFhirId: string): Promise<boolean> {
+        // Validate patient exists
+        const patient = await this.patientRepo.findOne({
+            where: { fhirId: patientFhirId },
+        });
+
+        if (!patient) {
+            throw new NotFoundException('Patient not found');
+        }
+
+        // Validate organization exists
+        const organization = await this.organizationRepo.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
+
+        // Check if there are any encounters between the patient and the practitioner (user)
+        // within the specified organization
+        const encounter = await this.encounterRepo.findOne({
+            where: {
+                patient: { id: patient.id },
+                practitioners: { id: practitionerId },
+                serviceProvider: {
+                    managingOrganization: {
+                        id: organization.id
+                    }
+                }
+            }
+        });
+
+        // Return true if an encounter exists (meaning there's a link), false otherwise
+        return !!encounter;
     }
 
 
@@ -253,8 +310,7 @@ export class EncountersService {
             .map(c => `COALESCE("${c.class}", 0) AS "${EncounterClass[c.class]}"`)
             .join(', ');
 
-        const query = `
-                        SELECT year, ${coalesceColumns}
+        const query = `SELECT year, ${coalesceColumns}
                         FROM crosstab(
                             $$ 
                                 SELECT
@@ -310,8 +366,9 @@ export class EncountersService {
         }));
     }
 
-    async getAverageWaitTimeGroupedByServiceProvider(organizationFhirId: string): Promise<any> {
+    async getAverageWaitTimeGroupedByServiceProvider(organizationFhirId: string, practitionerId?: string): Promise<any> {
         // First validate that the organization exists
+
         const organization = await this.organizationRepo.findOne({
             where: { fhirId: organizationFhirId }
         });
@@ -321,42 +378,40 @@ export class EncountersService {
         }
 
         // Get all encounters that match the criteria:
-        // - organization matches input (through serviceProvider's managingOrganization)
-        // - status = COMPLETED
-        // - class = AMB (Ambulatory)
-        // - appointment.status = fulfilled
-        // - Both encounter start and appointment start are not null
-        const result = await this.encounterRepo
-            .createQueryBuilder('encounter')
-            .innerJoin('encounter.serviceProvider', 'serviceProvider')
-            .innerJoin('encounter.appointment', 'appointment')
-            .where('serviceProvider.managingOrganization = :organizationId', { organizationId: organization.id })
-            .andWhere('encounter.status = :encounterStatus', { encounterStatus: EncounterStatus.COMPLETED })
-            .andWhere('encounter.class = :encounterClass', { encounterClass: EncounterClass.AMBULATORY })
-            .andWhere('appointment.status = :appointmentStatus', { appointmentStatus: AppointmentStatus.FULFILLED })
-            .select('serviceProvider.fhirId', 'serviceProviderFhirId')
-            .addSelect('serviceProvider.name', 'serviceProviderName')
-            .addSelect('AVG(EXTRACT(EPOCH FROM (encounter.start - appointment.start)) / 60)', 'averageWaitTimeMinutes')
-            .addSelect('COUNT(encounter.id)', 'totalEncounters')
-            .groupBy('serviceProvider.fhirId')
-            .addGroupBy('serviceProvider.name')
-            .orderBy('serviceProvider.name', 'ASC')
-            .getRawMany();
-
-        // Transform the result to match the expected format
-        const serviceProviders: any[] = result.map(item => ({
-            Department: item.serviceProviderName || 'Unknown',
-            averageWaitTimeMinutes: Math.round(parseFloat(item.averageWaitTimeMinutes || '0') * 100) / 100,
-        }));
+        const sql = `--sql
+            SELECT 
+                sp."fhirId" AS "serviceProviderFhirId",
+                sp."name" AS "Department",
+                AVG(EXTRACT(EPOCH FROM (enc."start" - app."start")) / 60)::DOUBLE PRECISION AS "averageWaitTimeMinutes",
+                COUNT(enc.id)::int AS "totalEncounters"
+            FROM encounters enc
+            INNER JOIN organization sp ON sp.id = enc."serviceProvider"
+            INNER JOIN appointment app ON app.id = enc."appointmentId"
+            LEFT JOIN encounter_practitioners ep ON ep."encounter_id" = enc.id 
+            WHERE sp."managing_organization" = $1
+                AND enc.status = $2
+                AND enc.class = $3
+                AND app.status = $4
+                AND ($5::uuid IS NULL OR ep."practitioner_id" = $5::uuid)
+            GROUP BY sp."fhirId", sp."name"
+            ORDER BY sp."name" ASC
+        `;
+        const result = await this.encounterRepo.query(sql, [
+            organization.id,
+            EncounterStatus.COMPLETED,
+            EncounterClass.AMBULATORY,
+            AppointmentStatus.FULFILLED,
+            practitionerId ?? null
+        ]);
 
         // Calculate overall statistics
-        const totalEncounters = serviceProviders.reduce((sum, sp) => sum + sp.totalEncounters, 0);
+        const totalEncounters = result.reduce((sum, sp) => sum + sp.totalEncounters, 0);
         const overallAverageWaitTimeMinutes = totalEncounters > 0
-            ? Math.round((serviceProviders.reduce((sum, sp) => sum + (sp.averageWaitTimeMinutes * sp.totalEncounters), 0) / totalEncounters) * 100) / 100
+            ? Math.round((result.reduce((sum, sp) => sum + (sp.averageWaitTimeMinutes * sp.totalEncounters), 0) / totalEncounters) * 100) / 100
             : 0;
 
         return {
-            serviceProviders,
+            result,
             overallAverageWaitTimeMinutes,
             totalEncounters
         };

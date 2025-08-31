@@ -1,7 +1,8 @@
-import { Controller, Get, Query, Param, UseGuards, BadRequestException, NotFoundException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UseGuards, BadRequestException, NotFoundException, HttpStatus } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { LocationUtilizationDto } from './dto/location-utilization.dto';
-import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiParam, ApiOkResponse } from '@nestjs/swagger';
+import { CreateLocationDto } from './dto/create-location.dto';
+import { ApiTags, ApiOperation, ApiQuery, ApiResponse, ApiParam, ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
 import { AuthGuard } from '../Utils/guards/auth.guard';
 import { RolesGuard } from '../Utils/guards/role.guard';
 import { Roles } from '../Utils/decorators/roles.decorator';
@@ -13,6 +14,19 @@ import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 @UseGuards(AuthGuard, RolesGuard)
 export class LocationsController {
     constructor(private readonly locationsService: LocationsService) { }
+
+    @Post()
+    @ApiOperation({ summary: 'Create a new location' })
+    @ApiCreatedResponse({ type: ApiResponseDTO })
+    @Roles([Role.ADMIN])
+    async createLocation(@Body() createLocationDto: CreateLocationDto) {
+        const data = await this.locationsService.createLocation(createLocationDto);
+        return new ApiResponseDTO({
+            message: 'Location created successfully',
+            data,
+            statusCode: HttpStatus.CREATED,
+        });
+    }
 
     @Get('utilization')
     @ApiOperation({ summary: 'Get location utilization statistics' })
@@ -45,11 +59,13 @@ export class LocationsController {
     @Get()
     @ApiOperation({ summary: 'Get all locations' })
     @ApiOkResponse({ type: ApiResponseDTO })
+    @ApiQuery({ name: 'organizationFhirId', description: 'Organization FHIR ID to filter locations by managing organization', required: true })
     @Roles([Role.ADMIN, Role.DOCTOR])
-    async getAllLocations() {
-        const data = await this.locationsService.getAllLocations();
+    async getAllLocations(@Query('organizationFhirId') organizationFhirId: string) {
+        const data = await this.locationsService.getAllLocations(organizationFhirId);
         return new ApiResponseDTO({
             message: 'All locations retrieved successfully',
+            length: data.length,
             data,
             statusCode: HttpStatus.OK,
         });

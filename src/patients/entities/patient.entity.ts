@@ -1,11 +1,11 @@
 import { CarePlan } from 'src/careplans/entities/careplan.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
-import { Device } from 'src/devices/entities/device.entity';
 import { MedicationRequest } from 'src/medications/entities/medication-request.entity';
 import { Observation } from 'src/observations/entities/observation.entity';
 import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
 import { Procedure } from 'src/procedures/entities/procedure.entity';
+import { PatientRole } from './patient-role.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 
 @Entity('patients')
@@ -43,11 +43,8 @@ export class Patient {
     @Column({ name: 'preferredLanguage', nullable: true })
     preferredLanguage: string;
 
-    @Column({ default: true })
-    active: boolean;
-
-    @Column({ default: false })
-    deceased: boolean;
+    @Column({ default: 'active' })
+    status: 'active' | 'deceased';
 
     @Column({ name: 'dateOfDeath', type: 'date', nullable: true })
     dateOfDeath: string;
@@ -81,4 +78,7 @@ export class Patient {
 
     @OneToMany(() => Procedure, procedure => procedure.subject)
     procedures: Procedure[];
+
+    @OneToMany(() => PatientRole, patientRole => patientRole.patient, { cascade: true })
+    patientRoles: PatientRole[];
 }

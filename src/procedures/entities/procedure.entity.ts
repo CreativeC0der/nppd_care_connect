@@ -10,6 +10,18 @@ import {
     JoinColumn,
 } from 'typeorm';
 
+export enum ProcedureCategory {
+    PSYCHIATRY_PROCEDURE = 'psychiatry_procedure',
+    COUNSELLING = 'counselling',
+    EDUCATION = 'education',
+    SURGICAL_PROCEDURE = 'surgical_procedure',
+    LABORATORY_TEST = 'laboratory_test',
+    IMAGING = 'imaging',
+    MEASUREMENT = 'measurement',
+    CHIROPRACTIC_MANIPULATION = 'chiropractic_manipulation',
+    SOCIAL_SERVICE_PROCEDURE = 'social_service_procedure',
+}
+
 export enum ProcedureStatus {
     PREPARATION = 'preparation',
     IN_PROGRESS = 'in-progress',
@@ -35,6 +47,13 @@ export class Procedure {
         default: ProcedureStatus.PREPARATION,
     })
     status: ProcedureStatus;
+
+    @Column({
+        type: 'enum',
+        enum: ProcedureCategory,
+        nullable: true,
+    })
+    category: ProcedureCategory;
 
     @Column({ nullable: true })
     code: string;

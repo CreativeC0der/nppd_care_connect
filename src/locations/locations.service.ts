@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Location } from './entities/location.entity';
 import { Encounter } from '../encounters/entities/encounter.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { LocationUtilizationDto } from './dto/location-utilization.dto';
+import { CreateLocationDto } from './dto/create-location.dto';
 
 export interface LocationUtilizationResult {
     encounterCount: number;
@@ -26,30 +27,72 @@ export class LocationsService {
         private readonly organizationRepository: Repository<Organization>,
     ) { }
 
+    async createLocation(createLocationDto: CreateLocationDto): Promise<Location> {
+        const {
+            partOfFhirId,
+            organizationFhirId,
+            ...locationData
+        } = createLocationDto;
+
+        // Create new location instance
+        const location = this.locationRepository.create(locationData);
+
+        // Handle partOf relationship if locationFhirId is provided
+        if (partOfFhirId) {
+            const parentLocation = await this.locationRepository.findOne({
+                where: { fhirId: partOfFhirId }
+            });
+            if (!parentLocation) {
+                throw new NotFoundException(`Parent location with FHIR ID ${partOfFhirId} not found`);
+            }
+            location.partOf = parentLocation;
+        }
+
+        const organization = await this.organizationRepository.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+        if (!organization) {
+            throw new NotFoundException(`Organization with FHIR ID ${organizationFhirId} not found`);
+        }
+        location.organization = organization;
+
+        // Save and return the created location
+        return this.locationRepository.save(location);
+    }
+
     async getLocationUtilization(params: LocationUtilizationDto): Promise<LocationUtilizationResult> {
         const { type, form, organizationFhirId } = params;
 
-        // 1. Get encounters count with status='in-progress' and matching location type and form
-        // Also ensure the encounter's service provider matches the organization
-        const encounterCount = await this.encounterRepository
-            .createQueryBuilder('encounter')
-            .innerJoin('encounter.location', 'location')
-            .innerJoin('encounter.serviceProvider', 'serviceProvider')
-            .innerJoin('serviceProvider.managingOrganization', 'managingOrganization')
-            .where('encounter.status = :status', { status: 'in-progress' })
-            .andWhere('location.type = :type', { type })
-            .andWhere('location.form = :form', { form })
-            .andWhere('managingOrganization.fhirId = :organizationFhirId', { organizationFhirId })
-            .getCount();
+        const organization = await this.organizationRepository.findOne({
+            where: { fhirId: organizationFhirId }
+        });
+        if (!organization) {
+            throw new NotFoundException(`Organization with FHIR ID ${organizationFhirId} not found`);
+        }
 
-        // 2. Get count of all locations with matching managingOrganization, type and form
-        const locationCount = await this.locationRepository
-            .createQueryBuilder('location')
-            .leftJoin('location.managingOrganization', 'managingOrganization')
-            .where('location.type = :type', { type })
-            .andWhere('location.form = :form', { form })
-            .andWhere('managingOrganization.fhirId = :organizationFhirId', { organizationFhirId })
-            .getCount();
+        const result = await this.locationRepository.query(
+            `--sql
+            SELECT
+                (SELECT COUNT(*) 
+                    FROM encounters enc
+                    INNER JOIN locations loc ON enc.location = loc.id
+                    INNER JOIN organization org ON enc."serviceProvider" = org.id
+                    WHERE enc.status = $1
+                        AND loc.type = $2
+                        AND loc.form = $3
+                        AND org."managing_organization" = $4
+                ) AS "encounterCount",
+                (SELECT COUNT(*) FROM locations loc
+                    INNER JOIN organization org ON loc.organization_id = org.id
+                    WHERE loc.type = $2
+                        AND loc.form = $3
+                        AND org.id = $4
+                ) AS "locationCount"
+            `,
+            ['in-progress', type, form, organization.id]
+        );
+        const encounterCount = parseInt(result[0].encounterCount, 10);
+        const locationCount = parseInt(result[0].locationCount, 10);
 
         // 3. Calculate utilization percentage
         const utilization = locationCount > 0 ? (encounterCount / locationCount) * 100 : 0;
@@ -64,16 +107,29 @@ export class LocationsService {
         };
     }
 
-    async getAllLocations(): Promise<Location[]> {
+    async getAllLocations(organizationFhirId: string): Promise<Location[]> {
         return this.locationRepository.find({
-            relations: ['managingOrganization', 'healthcareService'],
+            where: [
+                {
+                    organization: {
+                        fhirId: organizationFhirId
+                    }
+                },
+                {
+                    organization: {
+                        managingOrganization: {
+                            fhirId: organizationFhirId
+                        }
+                    }
+                }
+            ]
         });
     }
 
     async getLocationById(id: string): Promise<Location | null> {
         return this.locationRepository.findOne({
             where: { id },
-            relations: ['managingOrganization', 'healthcareService', 'partOf', 'subLocations'],
+            relations: ['organization', 'healthcareService', 'partOf', 'subLocations'],
         });
     }
 
@@ -81,7 +137,7 @@ export class LocationsService {
         return this.locationRepository.find({
             where: {
                 partOf: IsNull(),
-                managingOrganization: {
+                organization: {
                     fhirId: organizationFhirId
                 }
             },

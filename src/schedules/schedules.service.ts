@@ -21,22 +21,24 @@ export class SchedulesService {
         private readonly slotRepo: Repository<Slot>
     ) { }
 
-    async getFilteredSchedules(start: Date, end: Date, specialty: string): Promise<Schedule[]> {
+    async getFilteredSchedules(start: Date, end: Date, specialty: string): Promise<Practitioner[]> {
         console.log(start)
         console.log(end)
-        return this.scheduleRepo.find({
+        return this.practitionerRepo.find({
             where: {
-                planningHorizonStart: LessThanOrEqual(end),
-                planningHorizonEnd: MoreThanOrEqual(start),
-                specialty: ILike(`%${specialty}%`),
+                schedules: {
+                    planningHorizonStart: LessThanOrEqual(end),
+                    planningHorizonEnd: MoreThanOrEqual(start),
+                    specialty: ILike(`%${specialty}%`),
+                },
             },
-            relations: ['actor', 'slots'],
+            relations: ['schedules', 'schedules.slots', 'practitionerRoles', 'practitionerRoles.organization'],
             order: {
-                planningHorizonStart: 'ASC',
+                schedules: {
+                    planningHorizonStart: 'ASC',
+                },
             },
         });
-
-
     }
 
     async getSchedulesByPractitioner(practitionerFhirId: string): Promise<Schedule[]> {

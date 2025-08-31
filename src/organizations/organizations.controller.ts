@@ -43,14 +43,16 @@ export class OrganizationsController {
         description: 'List of all organizations',
         type: ApiResponseDTO,
     })
+    @ApiQuery({ name: 'organizationFhirId', description: 'Organization FHIR ID to filter organizations by managing organization', required: true })
     @Roles([Role.DOCTOR, Role.ADMIN])
-    async getAllOrganizations() {
+    async getAllOrganizations(@Query('organizationFhirId') organizationFhirId: string) {
         try {
-            const payload = await this.organizationsService.getAllOrganizations();
+            const payload = await this.organizationsService.getAllOrganizations(organizationFhirId);
             return new ApiResponseDTO({
                 message: 'Organizations Retrieved Successfully',
                 statusCode: HttpStatus.OK,
-                data: payload
+                data: payload,
+                length: payload.length,
             });
         }
         catch (err) {
