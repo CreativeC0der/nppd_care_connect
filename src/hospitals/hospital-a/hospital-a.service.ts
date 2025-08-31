@@ -67,8 +67,10 @@ export class HospitalAService implements HospitalAdapter, OnModuleInit {
 
         // Get the organization
         const organization = await this.organizationRepository.findOneBy({ fhirId: this.organizationId });
-        if (!organization)
-            throw new InternalServerErrorException(`Organization not found`);
+        if (!organization) {
+            console.error(`Organization not found`);
+            return;
+        }
         this.organization = organization;
 
     }
