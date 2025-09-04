@@ -1,6 +1,6 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, InternalServerErrorException, NotFoundException, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, InternalServerErrorException, NotFoundException, Param, Post, Query, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { PractitionersService } from './practitioners.service';
-import { ApiResponse, ApiOperation, ApiParam, ApiOkResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiResponse, ApiOperation, ApiParam, ApiOkResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ApiResponseDTO } from 'src/Utils/classes/apiResponse.dto';
 import { Roles } from 'src/Utils/decorators/roles.decorator';
 import { Role } from 'src/Utils/enums/role.enum';
@@ -31,14 +31,17 @@ export class PractitionersController {
     }
   }
 
-  @Get('with-encounter-counts/:organizationFhirId')
-  @ApiParam({ name: 'organizationFhirId', type: String })
+  @Get('with-encounter-counts')
+  @ApiQuery({ name: 'organizationFhirId', type: String })
+  @ApiQuery({ name: 'practitionerFhirId', type: String, required: false })
   @ApiOperation({ summary: 'Get all practitioners of an organization with their encounter counts' })
   @ApiOkResponse({ type: ApiResponseDTO })
   @Roles([Role.DOCTOR, Role.ADMIN])
-  async getPractitionersWithEncounterCounts(@Param('organizationFhirId') organizationFhirId: string): Promise<ApiResponseDTO> {
+  async getPractitionersWithEncounterCounts(
+    @Query('organizationFhirId') organizationFhirId: string,
+    @Query('practitionerFhirId') practitionerFhirId?: string): Promise<ApiResponseDTO> {
     try {
-      const data = await this.practitionersService.getPractitionersWithEncounterCounts(organizationFhirId);
+      const data = await this.practitionersService.getPractitionersWithEncounterCounts(organizationFhirId, practitionerFhirId);
       return new ApiResponseDTO({
         message: 'Practitioners with encounter counts fetched successfully',
         data,

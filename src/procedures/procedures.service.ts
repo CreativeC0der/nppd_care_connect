@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Procedure } from './entities/procedure.entity';
 import { CreateProcedureDto } from './dto/create-procedure.dto';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Role } from 'src/Utils/enums/role.enum';
 import { Organization } from 'src/organizations/entities/organization.entity';
+import { PatientsService } from 'src/patients/patients.service';
 
 @Injectable()
 export class ProceduresService {
@@ -19,6 +20,7 @@ export class ProceduresService {
         private encountersRepository: Repository<Encounter>,
         @InjectRepository(Organization)
         private organizationRepository: Repository<Organization>,
+        private patientsService: PatientsService,
     ) { }
 
     async create(createProcedureDto: CreateProcedureDto): Promise<Procedure> {
@@ -49,6 +51,12 @@ export class ProceduresService {
     }
 
     async findAll(organizationFhirId: string, practitionerId?: string): Promise<Procedure[]> {
+        let practitionerPatients: Patient[] | undefined;
+
+        if (practitionerId) {
+            practitionerPatients = await this.patientsService.getPatientsByPractitioner(organizationFhirId, practitionerId);
+        }
+
         return this.proceduresRepository.find({
             where: {
                 encounter: {
@@ -57,13 +65,26 @@ export class ProceduresService {
                             fhirId: organizationFhirId
                         }
                     },
-                    practitioners: {
-                        id: practitionerId ?? undefined
-                    }
+                    ...(practitionerId ? {
+                        patient: {
+                            id: In(practitionerPatients?.map(patient => patient.id) ?? [])
+                        }
+                    } : {})
                 }
-            }
+            },
+            select: {
+                subject: {
+                    id: true,
+                    fhirId: true,
+                    firstName: true,
+                    lastName: true,
+                }
+            },
+            relations: ['subject']
         });
     }
+
+
 
     async findByFhirId(fhirId: string): Promise<Procedure> {
         const procedure = await this.proceduresRepository.findOne({

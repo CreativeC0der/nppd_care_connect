@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Questionnaire } from './entities/questionnaire.entity';
@@ -8,6 +8,7 @@ import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
 import { QuestionnaireResponse } from './entities/questionnaireResponse.entity';
 import { CreateQuestionnaireResponseDto } from './dto/create-questionnaire-response.dto';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Injectable()
 export class QuestionnaireService {
@@ -21,13 +22,9 @@ export class QuestionnaireService {
     @InjectRepository(Encounter)
     private readonly encounterRepo: Repository<Encounter>,
 
-    @InjectRepository(Patient)
-    private readonly patientRepo: Repository<Patient>,
+    @InjectRepository(Organization)
+    private readonly organizationRepo: Repository<Organization>,
 
-    @InjectRepository(Practitioner)
-    private readonly practitionerRepo: Repository<Practitioner>,
-
-    private dataSource: DataSource,
   ) { }
 
   async createQuestionnaire(dto: CreateQuestionnaireDto): Promise<Questionnaire> {
@@ -70,42 +67,53 @@ export class QuestionnaireService {
     });
   }
 
-  async calculateNPSByDepartment(): Promise<Array<{ department: string, npsScore: number }>> {
+  async calculateNPSByDepartment(organizationFhirId: string): Promise<Array<{ department: string, npsScore: number }>> {
     try {
-      const query = `
+
+      const organization = await this.organizationRepo.findOne({ where: { fhirId: organizationFhirId } });
+      if (!organization) throw new NotFoundException('Organization not found');
+
+      const query = `--sql
+        WITH extracted_nps AS (
+          SELECT 
+            qr."encounterId",
+            (qr.items->0->'answer'->0->>'valueInteger')::int AS nps_score
+          FROM questionnaire_response qr
+          INNER JOIN questionnaire q ON qr."questionnaireId" = q.id
+          WHERE qr.status = 'completed'
+            AND q."fhirId" LIKE '%nps%'
+        ),
+        scored AS (
+          SELECT 
+            COALESCE(sp.name, 'Unknown') AS department,
+            COUNT(CASE WHEN e_nps.nps_score >= 9 THEN 1 END) AS promoters,
+            COUNT(CASE WHEN e_nps.nps_score BETWEEN 0 AND 6 THEN 1 END) AS detractors,
+            COUNT(*) AS total_responses
+          FROM extracted_nps e_nps
+          INNER JOIN encounters e ON e_nps."encounterId" = e.id
+          INNER JOIN organization sp ON e."serviceProvider" = sp.id
+          WHERE e_nps.nps_score IS NOT NULL
+            AND sp.managing_organization = '${organization.id}'
+          GROUP BY sp.name
+        )
         SELECT 
-          COALESCE(hs.name, 'Unknown') as department,
-          ROUND(
-            (
-              (COUNT(CASE WHEN CAST(qr.items->>'score' AS INTEGER) >= 9 THEN 1 END) - 
-               COUNT(CASE WHEN CAST(qr.items->>'score' AS INTEGER) <= 6 THEN 1 END)) * 100.0 / 
-              NULLIF(COUNT(*), 0)
-            ), 2
-          ) as nps_score
-        FROM questionnaire_response qr
-        INNER JOIN encounters e ON qr.encounter_id = e.id
-        INNER JOIN e.service_pro
-        WHERE qr.status = 'completed'
-          AND qr.items->>'score' IS NOT NULL
-          AND CAST(qr.items->>'score' AS INTEGER) BETWEEN 0 AND 10
-        GROUP BY hs.name
+          department,
+          ROUND(((promoters - detractors) * 100.0 / NULLIF(total_responses, 0)), 2) AS nps_score
+        FROM scored
         ORDER BY nps_score DESC
       `;
 
-      const result = await this.dataSource.query(query);
+      const result = await this.questionnaireRepo.query(query);
 
       if (!result || result.length === 0) {
         return [];
       }
 
-      return result.map(row => ({
-        department: row.department || 'Unknown',
-        npsScore: parseFloat(row.nps_score) || 0
-      })).filter(item => item.department !== 'Unknown' || item.npsScore !== 0);
+      return result;
 
     } catch (error) {
       console.error('Failed to calculate NPS scores:', error);
-      return [];
+      throw new InternalServerErrorException('Failed to calculate NPS scores');
     }
   }
 }

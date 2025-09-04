@@ -8,9 +8,10 @@ import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Condition } from 'src/conditions/entities/condition.entity';
 import { DiagnosticReport } from 'src/diagnostic-reports/entities/diagnostic-report.entity';
 import { Organization } from 'src/organizations/entities/organization.entity';
+import { PatientsModule } from 'src/patients/patients.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Procedure, Patient, Encounter, Condition, DiagnosticReport, Organization])],
+    imports: [TypeOrmModule.forFeature([Procedure, Patient, Encounter, Condition, DiagnosticReport, Organization]), PatientsModule],
     controllers: [ProceduresController],
     providers: [ProceduresService],
     exports: [ProceduresService, TypeOrmModule]

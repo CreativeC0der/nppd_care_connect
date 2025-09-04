@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { QuestionnaireService } from './questionnaire.service';
 import { CreateQuestionnaireDto } from './dto/create-questionnaire.dto';
 import { Questionnaire } from './entities/questionnaire.entity';
@@ -59,8 +59,14 @@ export class QuestionnaireController {
     description: 'NPS scores calculated successfully',
     type: ApiResponseDTO,
   })
-  async getNPSByDepartment() {
-    const payload = await this.questionnaireService.calculateNPSByDepartment();
+  @ApiQuery({
+    name: 'organizationFhirId',
+    type: String,
+    required: false,
+    description: 'Filter by organization FHIR ID',
+  })
+  async getNPSByDepartment(@Query('organizationFhirId') organizationFhirId: string) {
+    const payload = await this.questionnaireService.calculateNPSByDepartment(organizationFhirId);
     return new ApiResponseDTO({
       message: 'NPS Scores Calculated Successfully',
       statusCode: HttpStatus.OK,

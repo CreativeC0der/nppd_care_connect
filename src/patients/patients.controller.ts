@@ -52,16 +52,10 @@ export class PatientsController {
   }
 
   @Get('get-by-practitioner/:organizationFhirId')
-  @ApiOkResponse({
-    description: 'List of patients for the authenticated practitioner',
-    type: ApiResponseDTO,
-  })
+  @ApiOkResponse({ description: 'List of patients for the authenticated practitioner', type: ApiResponseDTO })
   @ApiParam({ name: 'organizationFhirId', description: 'Organization FHIR ID' })
   @Roles([Role.DOCTOR])
-  async getPatientsByPractitioner(
-    @Param('organizationFhirId') organizationFhirId: string,
-    @Req() req: any
-  ) {
+  async getPatientsByPractitioner(@Param('organizationFhirId') organizationFhirId: string, @Req() req: any) {
     try {
       const practitionerId = req.user.id;
       const payload = await this.patientService.getPatientsByPractitioner(organizationFhirId, practitionerId);
@@ -73,9 +67,8 @@ export class PatientsController {
     }
     catch (err) {
       console.error(err);
-      if (err instanceof BadRequestException) {
+      if (err instanceof BadRequestException)
         throw err;
-      }
       throw new InternalServerErrorException('Retrieval Failed: ' + err.message);
     }
   }

@@ -59,4 +59,29 @@ export class ConditionsController {
       throw new InternalServerErrorException('Failed to retrieve condition counts');
     }
   }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all conditions for an organization' })
+  @ApiResponse({ status: 200, description: 'Conditions retrieved successfully' })
+  @ApiQuery({ name: 'organizationFhirId', required: true, description: 'The FHIR ID of the organization' })
+  @Roles([Role.DOCTOR, Role.ADMIN])
+  async getAll(
+    @Query('organizationFhirId') organizationFhirId: string,
+    @Req() req: AuthenticatedRequest): Promise<ApiResponseDTO> {
+    try {
+      const practitionerId = req.user.role === Role.DOCTOR ? req.user.id : undefined;
+      const data = await this.conditionService.getAll(organizationFhirId, practitionerId);
+      return new ApiResponseDTO({
+        message: 'Conditions retrieved successfully',
+        data,
+        statusCode: HttpStatus.OK,
+      });
+    } catch (err) {
+      console.error(err);
+      if (err instanceof NotFoundException || err instanceof BadRequestException || err instanceof UnauthorizedException) {
+        throw err;
+      }
+      throw new InternalServerErrorException('Failed to retrieve conditions');
+    }
+  }
 }

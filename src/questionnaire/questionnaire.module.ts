@@ -7,9 +7,10 @@ import { QuestionnaireResponse } from './entities/questionnaireResponse.entity';
 import { Encounter } from 'src/encounters/entities/encounter.entity';
 import { Patient } from 'src/patients/entities/patient.entity';
 import { Practitioner } from 'src/practitioners/entities/practitioner.entity';
+import { Organization } from 'src/organizations/entities/organization.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Questionnaire, QuestionnaireResponse, Encounter, Patient, Practitioner,])],
+  imports: [TypeOrmModule.forFeature([Questionnaire, QuestionnaireResponse, Encounter, Patient, Practitioner, Organization])],
   controllers: [QuestionnaireController],
   providers: [QuestionnaireService],
 })

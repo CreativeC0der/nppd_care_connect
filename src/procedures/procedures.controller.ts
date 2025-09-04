@@ -62,16 +62,9 @@ export class ProceduresController {
 
     @Get('organization/:organizationFhirId/category-stats')
     @Roles([Role.ADMIN, Role.DOCTOR])
-    @ApiOperation({
-        summary: 'Get procedure count grouped by category for an organization',
-        description: 'Returns procedure counts grouped by category. If the user is a doctor, results are filtered to only show procedures from encounters where they are the practitioner.'
-    })
+    @ApiOperation({ summary: 'Get procedure count grouped by category for an organization', description: 'Returns procedure counts grouped by category. If the user is a doctor, results are filtered to only show procedures from encounters where they are the practitioner.' })
     @ApiParam({ name: 'organizationFhirId', description: 'FHIR ID of the organization' })
-    @ApiResponse({
-        status: 200,
-        description: 'Procedure counts by category',
-        type: ApiResponseDTO
-    })
+    @ApiResponse({ status: 200, description: 'Procedure counts by category', type: ApiResponseDTO })
     async getProcedureCountByCategory(
         @Param('organizationFhirId') organizationFhirId: string,
         @Req() req: AuthenticatedRequest
